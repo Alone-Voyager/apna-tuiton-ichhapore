@@ -1,0 +1,495 @@
+
+"use client";
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { getAdminProfile } from '../lib/supabase/auth';
+import {
+  Home as HomeIcon,
+  BarChart2 as AnalyticsIcon,
+  User as UserIcon,
+  UserPlus as UserAddIcon,
+  CalendarCheck as CalendarCheckIcon,
+  Calendar as CalendarIcon,
+  Users as UsersIcon,
+  DollarSign as DollarSignIcon,
+  CreditCard as CollectIcon,
+  Clock as TimeIcon,
+  CheckCircle as CheckCircleIcon,
+  FileText as ReportsIcon,
+  Bell as BellIcon,
+  Settings as SettingsIcon,
+  Zap as AutomationIcon,
+  ChevronDown as ChevronDownIcon,
+  GraduationCap as GraduationIcon,
+  X as CloseIcon,
+  ClipboardList as TestsIcon,
+  BookOpen as AssignmentsIcon,
+} from 'lucide-react';
+import { LogOut as LogOutIcon } from 'lucide-react';
+import { signOut } from '../lib/supabase/auth';
+import { Button } from '../components/ui/button';
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const pathname = usePathname() || '/';
+  const router = useRouter();
+
+  // dropdown states
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [feesOpen, setFeesOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [admissionOpen, setAdmissionOpen] = useState(false);
+
+  // user profile states
+  const [userName, setUserName] = useState('Admin User');
+  const [userRole, setUserRole] = useState('Premium Account');
+  const [organizationName, setOrganizationName] = useState('TuitionPro');
+  const [loadingOrg, setLoadingOrg] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // helpers to check active routes
+  const isActive = (route: string) => pathname === route;
+  const isParentActive = (routes: string[]) => routes.some(r => pathname === r || pathname.startsWith(r + '/'));
+
+  // initialize dropdowns based on current pathname so active children show when sidebar mounts
+  useEffect(() => {
+    setAttendanceOpen(isParentActive(['/attendance']));
+    setFeesOpen(isParentActive(['/fees']));
+    setReportsOpen(isParentActive(['/reports']));
+    setSettingsOpen(isParentActive(['/settings']));
+    setAdmissionOpen(isParentActive(['/admissions']));
+  }, [pathname]);
+
+  // Load user profile data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      const { data, error } = await getAdminProfile();
+      if (data && !error) {
+        setUserName(data.full_name || 'Admin User');
+        setUserRole(data.role === 'super_admin' ? 'Super Admin' : data.role === 'staff' ? 'Staff Member' : 'Administrator');
+      }
+    };
+    loadUserProfile();
+  }, []);
+
+  // Load organization data
+  useEffect(() => {
+    const loadOrganization = async () => {
+      try {
+        const response = await fetch('/api/organizations');
+        if (response.ok) {
+          const data = await response.json();
+          setOrganizationName(data.name || 'TuitionPro');
+        }
+      } catch (error) {
+        console.error('Error loading organization:', error);
+      } finally {
+        setLoadingOrg(false);
+      }
+    };
+    loadOrganization();
+  }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+      // close confirmation if open
+      setShowLogoutConfirm(false);
+      // redirect to login
+      router.push('/login');
+    } catch (err) {
+      console.error('Logout error', err);
+      setIsLoggingOut(false);
+    }
+  };
+
+
+  return (
+    <>
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed left-0 top-0 h-full w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 overflow-y-auto`}>
+        {/* Header with Close Button */}
+        <div className="p-6 border-b border-slate-700 relative">
+          <button
+            onClick={onClose}
+            className="lg:hidden absolute top-4 right-4 p-2 hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            <CloseIcon className="w-5 h-5 text-slate-300 hover:text-white" />
+          </button>
+
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+              <GraduationIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <div className="min-w-0 flex-1 pr-12 lg:pr-0">
+              {loadingOrg ? (
+                <div className="space-y-1">
+                  <div className="h-5 bg-slate-700 rounded w-24 animate-pulse"></div>
+                  <div className="h-3 bg-slate-700 rounded w-32 animate-pulse"></div>
+                </div>
+              ) : (
+                <>
+                  <h1
+                    className="text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-white to-red-200 bg-clip-text text-transparent leading-tight whitespace-normal break-words"
+                    title={organizationName}
+                  >
+                    {organizationName}
+                  </h1>
+                  <p className="text-xs sm:text-xs text-slate-400">Tuition Management</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-4 py-6">
+          <ul className="space-y-2">
+            <li>
+              <Link href="/dashboard" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <HomeIcon className="w-5 h-5" />
+                <span className="font-medium">Dashboard</span>
+              </Link>
+            </li>
+
+
+
+            <li>
+              <Link href="/dashboard/students" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/students')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <UserIcon className="w-5 h-5" />
+                <span className="font-medium">Students</span>
+              </Link>
+            </li>
+
+            <li>
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setAdmissionOpen(!admissionOpen)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/admissions')
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                    }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <UserAddIcon className="w-5 h-5" />
+                    <span className="font-medium">Admissions</span>
+                  </div>
+                  <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${admissionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {admissionOpen && (
+                  <ul className="ml-6 mt-2 space-y-1">
+                    <li>
+                      <Link href="/dashboard/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                        <CalendarCheckIcon className="w-4 h-4" />
+                        <span>Overview</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/dashboard/admissions/new" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>New Admission</span>
+                      </Link>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            </li>
+
+
+
+            {/* Attendance Dropdown */}
+            <li>
+              <button
+                onClick={() => setAttendanceOpen(!attendanceOpen)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isParentActive(['/dashboard/attendance'])
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <UsersIcon className="w-5 h-5" />
+                  <span className="font-medium">Attendance</span>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${attendanceOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {attendanceOpen && (
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>
+                    <Link href="/dashboard/attendance" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <CalendarCheckIcon className="w-4 h-4" />
+                      <span>Overview</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/dashboard/attendance/daily" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <CalendarIcon className="w-4 h-4" />
+                      <span>Daily Attendance</span>
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+
+            {/* Fees Management Dropdown */}
+            <li>
+              <button
+                onClick={() => setFeesOpen(!feesOpen)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isParentActive(['/dashboard/fees'])
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <DollarSignIcon className="w-5 h-5" />
+                  <span className="font-medium">Fees Management</span>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${feesOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {feesOpen && (
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>
+                    <Link href="/dashboard/fees" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <DollarSignIcon className="w-4 h-4" />
+                      <span>Overview</span>
+                    </Link>
+                  </li>
+                  {/* <li>
+                    <Link href="/dashboard/fees/collect" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <CollectIcon className="w-4 h-4" />
+                      <span>Collect Fees</span>
+                    </Link>
+                  </li> */}
+                  {/* <li>
+                    <Link href="/dashboard/fees/pending" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <TimeIcon className="w-4 h-4" />
+                      <span>Pending Fees</span>
+                    </Link>
+                  </li> */}
+                  <li>
+                    <Link href="/dashboard/fees/collected" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <CheckCircleIcon className="w-4 h-4" />
+                      <span>Collected Fees</span>
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+
+            {/* Data Management */}
+            <li>
+              <Link href="/dashboard/data-management" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/data-management')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <UserIcon className="w-5 h-5" />
+                <span className="font-medium">Data Management</span>
+              </Link>
+            </li>
+
+            {/* Teacher Page */}
+            <li>
+              <Link href="/dashboard/teacher" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/teacher')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <UserIcon className="w-5 h-5" />
+                <span className="font-medium">Teacher</span>
+              </Link>
+            </li>
+
+            {/* Tests */}
+            <li>
+              <Link href="/dashboard/tests" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/tests')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <TestsIcon className="w-5 h-5" />
+                <span className="font-medium">Tests & Results</span>
+              </Link>
+            </li>
+
+            {/* Assignments */}
+            <li>
+              <Link href="/dashboard/assignments" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/assignments')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <AssignmentsIcon className="w-5 h-5" />
+                <span className="font-medium">Assignments</span>
+              </Link>
+            </li>
+
+            {/* Reports Dropdown */}
+            <li>
+              <button
+                onClick={() => setReportsOpen(!reportsOpen)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isParentActive(['/dashboard/reports'])
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <ReportsIcon className="w-5 h-5" />
+                  <span className="font-medium">Reports</span>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${reportsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {reportsOpen && (
+                <ul className="ml-6 mt-2 space-y-1">
+                  {/* <li>
+                    <Link href="/dashboard/reports" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <HomeIcon className="w-4 h-4" />
+                      <span>Overview</span>
+                    </Link>
+                  </li> */}
+                  <li>
+                    <Link href="/dashboard/reports/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <UserAddIcon className="w-4 h-4" />
+                      <span>Admissions</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/dashboard/reports/attendance" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <CalendarCheckIcon className="w-4 h-4" />
+                      <span>Attendance</span>
+                    </Link>
+                  </li>
+                  {/* <li>
+                    <Link href="/dashboard/reports/collections" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <DollarSignIcon className="w-4 h-4" />
+                      <span>Collections</span>
+                    </Link>
+                  </li> */}
+                  <li>
+                    {/* <Link href="/dashboard/reports/advanced" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <AutomationIcon className="w-4 h-4" />
+                      <span>Advanced</span>
+                    </Link> */}
+                  </li>
+                </ul>
+              )}
+            </li>
+            {/* <li>
+              <Link href="/dashboard/analytics" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/analytics')
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <AnalyticsIcon className="w-5 h-5" />
+                <span className="font-medium">Analytics</span>
+              </Link>
+            </li> */}
+            <li>
+              <Link href="/dashboard/notifications" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/notifications')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <BellIcon className="w-5 h-5" />
+                <span className="font-medium">Smart Notifications</span>
+              </Link>
+            </li>
+
+
+
+            {/* Settings Dropdown */}
+            <li>
+              <button
+                onClick={() => setSettingsOpen(!settingsOpen)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isParentActive(['/dashboard/settings'])
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <SettingsIcon className="w-5 h-5" />
+                  <span className="font-medium">Settings</span>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${settingsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {settingsOpen && (
+                <ul className="ml-6 mt-2 space-y-1">
+                  <li>
+                    <Link href="/dashboard/settings" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <SettingsIcon className="w-4 h-4" />
+                      <span>General</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/dashboard/settings/integrations" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      <span>Integrations</span>
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-slate-700">
+          <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                <UserIcon className="text-white w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white text-sm truncate">{userName}</p>
+                <p className="text-xs text-slate-400">{userRole}</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3">
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition"
+            >
+              <LogOutIcon className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 z-60">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Confirm Logout</h3>
+            <p className="text-sm text-slate-600">Are you sure you want to logout?</p>
+            <div className="mt-4 flex justify-end space-x-3">
+              <Button variant="ghost" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
+              <Button onClick={handleLogout} disabled={isLoggingOut}>
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

@@ -1,0 +1,209 @@
+SOL AI TECH FZ-LLC — PROPRIETARY SOFTWARE LICENSE
+Project: Slaab AI (Closed Source / Confidential)
+
+Copyright © 2025-2026 SOL AI Tech FZ-LLC. All rights reserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTICE TO ALL PERSONS ACCESSING THIS REPOSITORY:
+
+This software, including all source code, object code, binaries, algorithms, architecture,
+documentation, configuration files, prompts, datasets, trained models, API endpoints, design
+files, comments, commit history, screenshots, recordings, and any derivative works
+(collectively, the "Software"), is the exclusive proprietary and confidential property of
+SOL AI Tech FZ-LLC ("Company," "we," "us").
+
+UNAUTHORIZED ACCESS, USE, COPYING, MODIFICATION, DISTRIBUTION, REVERSE ENGINEERING, DISCLOSURE,
+OR ANY OTHER ACTION NOT EXPRESSLY AUTHORIZED IN WRITING IS STRICTLY PROHIBITED AND MAY RESULT
+IN CIVIL AND CRIMINAL LIABILITY UNDER THE LAWS OF THE UNITED ARAB EMIRATES (UAE) AND INDIA.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. NO LICENSE GRANTED
+   This repository does NOT grant any license, rights, or permissions to any person or entity
+   except as explicitly authorized in a separate, signed written agreement with the Company.
+   Access to this repository does not constitute permission to use, copy, modify, or disclose
+   the Software.
+
+2. AUTHORIZED USE (LIMITED SCOPE)
+   If you are an authorized employee, contractor, consultant, or vendor of the Company:
+   a) You may access and modify the Software ONLY to perform assigned work for the Company
+      within the scope of your written employment/consulting/service agreement.
+   b) You must comply with all Company security policies, including 2FA enforcement, access
+      logging, and approved development environments.
+   c) Your authorization is non-transferable, non-sublicensable, and revocable at any time.
+   d) Upon termination of your relationship with the Company (for any reason), your access
+      and all permissions immediately cease.
+
+3. PROHIBITED ACTIONS
+   You must NOT, and must NOT allow or assist others to:
+   a) Copy, reproduce, download, clone, fork, mirror, or transfer any part of the Software
+      to personal devices, cloud storage, code repositories, USB drives, or external systems
+      not explicitly approved in writing by the Company.
+   b) Share, publish, distribute, sell, sublicense, lease, transmit, or disclose the Software
+      or any portion thereof, in any form or medium (including but not limited to: email,
+      messaging apps, file shares, public/private repos, gists, pastebin, forums, social media).
+   c) Reverse engineer, decompile, disassemble, derive source code from binaries, or attempt
+      to discover or reconstruct underlying algorithms, logic, or trade secrets.
+   d) Use the Software to train, fine-tune, or improve any machine learning model, large
+      language model (LLM), or artificial intelligence system, whether proprietary or open-source.
+   e) Create derivative works, modifications, adaptations, translations, or works based on
+      the Software for any purpose other than authorized Company work.
+   f) Use the Software to develop competing products, services, or technologies.
+   g) Remove, alter, obscure, or tamper with proprietary notices, copyright statements,
+      watermarks, or attribution.
+   h) Take screenshots, screen recordings, photographs, or make verbal/written descriptions
+      of the Software for purposes other than authorized Company work.
+   i) Retain any copies, notes, documentation, backups, or derivatives after your
+      authorization ends.
+   j) Discuss, describe, or disclose technical details, architecture, algorithms, business
+      logic, performance metrics, vulnerabilities, or implementation details to any
+      unauthorized person, including in job interviews, conference talks, blog posts, or
+      casual conversations.
+
+4. CONFIDENTIALITY (PERPETUAL)
+   a) The Software constitutes Confidential Information and Trade Secrets of the Company.
+   b) You must maintain strict confidentiality and not disclose any part of the Software to
+      any third party without prior written authorization from the Company.
+   c) Your confidentiality obligations:
+      - Begin immediately upon first access to the Software.
+      - Continue perpetually, surviving termination of your relationship with the Company.
+      - Apply regardless of whether information is marked "confidential."
+   d) You must immediately report any actual, suspected, or potential unauthorized disclosure,
+      breach, leak, security incident, or access to: [INSERT SECURITY EMAIL]
+   e) In the event of legal process (subpoena, court order) requiring disclosure, you must
+      immediately notify the Company before disclosure to allow the Company to seek protective
+      measures.
+
+5. INTELLECTUAL PROPERTY OWNERSHIP
+   a) All contributions, submissions, modifications, improvements, bug fixes, features,
+      documentation, ideas, concepts, feedback, and suggestions that you create, submit, or
+      conceive in connection with the Software (collectively, "Contributions") are and shall
+      remain the exclusive property of the Company.
+   b) You hereby irrevocably assign to the Company all worldwide right, title, and interest
+      in and to all Contributions, including all intellectual property rights (copyrights,
+      patents, trade secrets, trademarks, and all other proprietary rights).
+   c) To the extent moral rights cannot be assigned, you hereby irrevocably waive and agree
+      not to assert any moral rights you may have in the Contributions.
+   d) You represent and warrant that:
+      - Your Contributions are your original work or you have sufficient rights to assign them.
+      - Your Contributions do not infringe third-party intellectual property rights.
+      - Your Contributions do not contain confidential information from prior employers
+        or other third parties.
+   e) At the Company's request, you will execute any documents necessary to confirm or perfect
+      the Company's ownership rights.
+
+6. WORK-FOR-HIRE
+   To the maximum extent permitted by applicable law (including Article 28 of UAE Federal
+   Decree-Law No. 38 of 2021 on Copyrights and Neighbouring Rights, and Section 17 of the
+   Indian Copyright Act, 1957), all Contributions and work you perform in connection with the
+   Software shall be deemed "works made for hire" with the Company as the author and owner.
+
+7. THIRD-PARTY OPEN-SOURCE COMPONENTS
+   The Software may incorporate open-source libraries governed by their respective licenses
+   (MIT, Apache, etc.). Your obligations under this License apply to the Company's proprietary
+   code. You must comply with third-party licenses for those specific components, but such
+   compliance does NOT grant you rights to the Company's proprietary code, architecture,
+   integration, configuration, or derivative works.
+
+8. POST-TERMINATION OBLIGATIONS
+   Upon termination of your relationship with the Company, or upon Company request, you must:
+   a) Immediately cease all access to and use of the Software.
+   b) Return or destroy all copies of the Software, including code, documentation, notes,
+      backups, local clones, and any materials containing Company Confidential Information.
+   c) Provide written certification of compliance with the above within 5 business days.
+   d) Continue to honor all confidentiality, non-disclosure, and intellectual property
+      obligations indefinitely.
+
+9. MONITORING, LOGGING, AND AUDITING
+   To protect Company assets and detect unauthorized activity, the Company may:
+   a) Monitor, log, and audit all access to and use of the Software, including commits,
+      downloads, API calls, and repository activity.
+   b) Use technical measures (watermarking, code fingerprinting, access controls, DLP tools).
+   c) Conduct security audits and investigations.
+   By accessing the Software, you acknowledge and consent to such monitoring to the extent
+   permitted by applicable law.
+
+10. EXPORT CONTROL
+    The Software may be subject to export control laws and regulations. You agree not to
+    export, re-export, or transfer the Software in violation of applicable laws.
+
+11. LEGAL REMEDIES AND ENFORCEMENT
+    a) Breach of this License may cause irreparable harm for which monetary damages are
+       inadequate.
+    b) The Company is entitled to seek immediate injunctive relief, specific performance,
+       and other equitable remedies without posting bond, in addition to all other available
+       remedies.
+    c) Unauthorized disclosure, use, or distribution may result in:
+       - Civil liability: Injunctions, damages, account of profits, destruction of infringing
+         materials, legal costs.
+       - Criminal liability: Prosecution under applicable laws, including:
+         * UAE Federal Decree-Law No. 38 of 2021 (Copyright Law): Fines up to AED 100,000,
+           imprisonment, and confiscation of infringing materials.
+         * UAE Federal Decree-Law No. 34 of 2021 (Cybercrime Law): Penalties for unauthorized
+           access to computer systems and data breaches.
+         * India Copyright Act, 1957: Imprisonment up to 3 years and fines up to INR 2,00,000.
+         * India Information Technology Act, 2000 (Section 43, 66): Penalties for unauthorized
+           access, data theft, and computer-related offenses.
+       - Immediate termination of employment/contract and removal of all access.
+       - Reporting to authorities in UAE and India as applicable.
+
+12. GOVERNING LAW AND JURISDICTION
+    a) This License shall be governed by and construed in accordance with the laws of the
+       Emirate of Dubai and the federal laws of the United Arab Emirates, without regard to
+       conflict-of-law principles.
+    b) For contributors located in India, Indian law (including the Copyright Act, 1957;
+       Information Technology Act, 2000; and Indian Contract Act, 1872) shall apply to the
+       extent required by mandatory provisions.
+    c) Any disputes arising from or relating to this License shall be subject to the exclusive
+       jurisdiction of the courts of Dubai, UAE, except where mandatory local jurisdiction
+       applies.
+    d) The Company may seek enforcement in any jurisdiction where unauthorized use or
+       disclosure occurs.
+
+13. INTEGRATION WITH OTHER AGREEMENTS
+    This License supplements (and does not replace) any employment agreement, consulting
+    agreement, non-disclosure agreement, contractor agreement, or other written agreement
+    between you and the Company. In the event of conflict, the more restrictive terms shall
+    apply to maximize protection of Company interests.
+
+14. SEVERABILITY
+    If any provision of this License is held invalid or unenforceable, the remaining provisions
+    shall remain in full force and effect, and the invalid provision shall be modified to the
+    minimum extent necessary to make it valid and enforceable.
+
+15. WAIVER
+    No waiver of any provision of this License shall be effective unless in writing and signed
+    by an authorized representative of the Company. No failure or delay in exercising any right
+    shall constitute a waiver.
+
+16. ENTIRE AGREEMENT
+    This License, together with any executed employment, consulting, or service agreements and
+    any separate written authorization from the Company, constitutes the entire agreement
+    regarding access to and use of the Software.
+
+17. UPDATES TO THIS LICENSE
+    The Company reserves the right to update this License at any time. Continued access to or
+    use of the Software after changes constitutes acceptance of the updated License.
+
+18. NO WARRANTY
+    THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED,
+    INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+    NON-INFRINGEMENT, SECURITY, ACCURACY, OR RELIABILITY.
+
+19. LIMITATION OF LIABILITY
+    TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE COMPANY BE LIABLE FOR ANY
+    INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, OR ANY LOSS
+    OF PROFITS, REVENUE, DATA, GOODWILL, OR BUSINESS INTERRUPTION, ARISING OUT OF OR RELATING
+    TO THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT INFORMATION
+
+Security Incidents / Legal Compliance: security@slaab.ai
+Legal Department: legal@slaab.ai
+Company Address: SOL AI Tech FZ-LLC,
+Sheikh Mohammed Bin Zayed Rd
+Dubai Production City, In5 Tech, Dubai
+
+BY ACCESSING THIS REPOSITORY, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREE TO BE
+BOUND BY ALL TERMS OF THIS LICENSE.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
