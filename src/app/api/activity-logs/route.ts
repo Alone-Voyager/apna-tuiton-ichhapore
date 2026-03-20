@@ -1,59 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getRequestOrgContext } from '../../../lib/supabase/server';
 
 // GET /api/activity-logs - Fetch activity logs for the organization
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const { supabase, user, organizationId } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    if (!user || !organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
-    }
-
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData?.organization_id) {
-      console.error('GET /api/activity-logs - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
       );
     }
 
@@ -79,7 +35,7 @@ export async function GET(request: NextRequest) {
           full_name
         )
       `)
-      .eq('organization_id', userData.organization_id)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(parseInt(limit));
 
@@ -106,10 +62,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { activities: activityLogs || [] },
-      { status: 200, headers: response.headers }
-    );
+    return NextResponse.json({ activities: activityLogs || [] }, { status: 200 });
   } catch (error) {
     console.error('Unexpected error in GET /api/activity-logs:', error);
     return NextResponse.json(

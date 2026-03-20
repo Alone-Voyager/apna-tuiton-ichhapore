@@ -1,12 +1,38 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import type { NextRequest } from 'next/server';
 
-export async function createRouteSupabaseClient() {
+function extractBearerToken(request?: NextRequest) {
+  if (!request) return null;
+  const authorization = request.headers.get('authorization') || request.headers.get('Authorization');
+  if (!authorization) return null;
+  const [scheme, token] = authorization.split(' ');
+  if (!scheme || !token || scheme.toLowerCase() !== 'bearer') return null;
+  return token.trim();
+}
+
+export async function createRouteSupabaseClient(request?: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+
+  const bearerToken = extractBearerToken(request);
+  if (bearerToken) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
+      },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
   }
 
   const cookieStore = await cookies();
@@ -26,12 +52,13 @@ export async function createRouteSupabaseClient() {
   });
 }
 
-export async function getRequestOrgContext() {
-  const supabase = await createRouteSupabaseClient();
+export async function getRequestOrgContext(request?: NextRequest) {
+  const supabase = await createRouteSupabaseClient(request);
+  const bearerToken = extractBearerToken(request);
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await (bearerToken ? supabase.auth.getUser(bearerToken) : supabase.auth.getUser());
 
   if (userError || !user) {
     return { supabase, user: null, organizationId: null as string | null };

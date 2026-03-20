@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { supabase } from "../lib/supabase/client";
 
 function isIpAddress(hostname: string) {
   // IPv4 and bracketless IPv6 detection.
@@ -84,6 +85,10 @@ export function ApiProxyInit() {
 
     window.fetch = async (...args) => {
       let [resource, config] = args;
+      const startedAsApiPath =
+        (typeof resource === "string" && resource.startsWith("/api/")) ||
+        (resource instanceof Request && new URL(resource.url).pathname.startsWith("/api/")) ||
+        (resource instanceof URL && resource.pathname.startsWith("/api/"));
 
       if (typeof resource === "string" && resource.startsWith("/api/")) {
         resource = `${API_BASE_URL}${resource}`;
@@ -99,6 +104,32 @@ export function ApiProxyInit() {
       } else if (resource instanceof URL && resource.pathname.startsWith("/api/")) {
         if (resource.origin === window.location.origin) {
           resource = new URL(`${API_BASE_URL}${resource.pathname}${resource.search}`);
+        }
+      }
+
+      if (startedAsApiPath) {
+        const { data } = await supabase.auth.getSession();
+        const accessToken = data.session?.access_token;
+
+        if (resource instanceof Request) {
+          const headers = new Headers(resource.headers);
+          if (accessToken && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${accessToken}`);
+          }
+          resource = new Request(resource, {
+            headers,
+            credentials: "include",
+          });
+        } else {
+          const headers = new Headers(config?.headers || {});
+          if (accessToken && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${accessToken}`);
+          }
+          config = {
+            ...config,
+            headers,
+            credentials: "include",
+          };
         }
       }
 

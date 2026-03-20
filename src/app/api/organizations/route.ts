@@ -1,57 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase/client';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getRequestOrgContext } from '../../../lib/supabase/server';
 
 // Helper function to get authenticated user's organization
-async function getUserOrganizationId() {
-  const cookieStore = await cookies();
-  
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return { organizationId: null, error: 'Unauthorized' };
-  }
-
-  // Get the user's organization_id from admin_profiles
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('admin_profiles')
-    .select('organization_id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (profileError || !profile) {
-    return { organizationId: null, error: 'User profile not found' };
-  }
-
-  return { organizationId: profile.organization_id, error: null };
-}
-
 // GET /api/organizations - Fetch logged-in user's organization
 export async function GET(request: NextRequest) {
   try {
-    const { organizationId, error: authError } = await getUserOrganizationId();
+    const { user, organizationId } = await getRequestOrgContext(request);
 
-    if (authError || !organizationId) {
+    if (!user || !organizationId) {
       return NextResponse.json(
-        { error: authError || 'Organization not found' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -90,11 +49,11 @@ export async function GET(request: NextRequest) {
 // PUT /api/organizations - Update logged-in user's organization
 export async function PUT(request: NextRequest) {
   try {
-    const { organizationId, error: authError } = await getUserOrganizationId();
+    const { user, organizationId } = await getRequestOrgContext(request);
 
-    if (authError || !organizationId) {
+    if (!user || !organizationId) {
       return NextResponse.json(
-        { error: authError || 'Organization not found' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }

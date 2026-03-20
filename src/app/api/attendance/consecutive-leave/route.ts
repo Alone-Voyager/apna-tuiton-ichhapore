@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getRequestOrgContext } from '../../../../lib/supabase/server';
 
 /**
  * GET /api/attendance/consecutive-leave
@@ -7,37 +7,14 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  */
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
+    const { supabase, user, organizationId: userOrgId } = await getRequestOrgContext(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
     // Get organization_id from query params or session
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organization_id');
+    const organizationId = searchParams.get('organization_id') || userOrgId;
     
     if (!organizationId) {
       return NextResponse.json(
@@ -86,8 +63,6 @@ export async function GET(request: NextRequest) {
           totalSuspended: suspendedStudents?.length || 0
         }
       }
-    }, {
-      headers: response.headers
     });
   } catch (error) {
     console.error('Error in consecutive leave API:', error);
@@ -104,33 +79,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
+    const { supabase, user } = await getRequestOrgContext(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
     const body = await request.json();
     const { studentId } = body;
@@ -159,8 +111,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: data?.[0] || null
-    }, {
-      headers: response.headers
     });
   } catch (error) {
     console.error('Error in consecutive leave check:', error);

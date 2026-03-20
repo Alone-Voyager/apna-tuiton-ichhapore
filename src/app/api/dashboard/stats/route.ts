@@ -1,61 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getRequestOrgContext } from '../../../../lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const { supabase, user, organizationId } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    if (!user || !organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
-    }
-
-    const organizationId = userData.organization_id;
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
 
     // 1. Get total registered students count

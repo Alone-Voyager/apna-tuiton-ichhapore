@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getRequestOrgContext } from '../../../../lib/supabase/server';
 
 /**
  * POST /api/attendance/reactivate-student
@@ -7,49 +7,37 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
+    const { supabase, user } = await getRequestOrgContext(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await request.json();
-    const { studentId, adminId, reason } = body;
+    const { studentId, reason } = body;
 
-    if (!studentId || !adminId) {
+    if (!studentId) {
       return NextResponse.json(
-        { error: 'Student ID and Admin ID are required' },
+        { error: 'Student ID is required' },
         { status: 400 }
       );
+    }
+
+    const { data: adminProfile } = await supabase
+      .from('admin_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!adminProfile?.id) {
+      return NextResponse.json({ error: 'Admin profile not found' }, { status: 403 });
     }
 
     // Call the reactivation function
     const { data, error } = await supabase
       .rpc('reactivate_suspended_student', {
         p_student_id: studentId,
-        p_admin_id: adminId,
+        p_admin_id: adminProfile.id,
         p_reason: reason || 'Manual reactivation by admin'
       });
 
@@ -64,8 +52,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: data,
       message: data ? 'Student reactivated successfully' : 'Student not found or not suspended'
-    }, {
-      headers: response.headers
     });
   } catch (error) {
     console.error('Error in student reactivation:', error);

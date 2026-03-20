@@ -1,61 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createRouteSupabaseClient, getRequestOrgContext } from '../../../lib/supabase/server';
 import { supabaseAdmin } from '../../../lib/supabase/client';
 import { sendAdmissionWelcome } from '../../../lib/admission-notification-service';
 
 // GET /api/students - Fetch students for the organization
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const { supabase, user, organizationId } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!user || !organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
-    }
-
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData?.organization_id) {
-      console.error('GET /api/students - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
       );
     }
 
@@ -71,7 +27,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('students')
       .select('*, classes(id, name, monthly_fee)')
-      .eq('organization_id', userData.organization_id)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -116,7 +72,7 @@ export async function GET(request: NextRequest) {
       const { data: paidPayments, error: paidError } = await supabase
         .from('fee_payment_history')
         .select('student_id, payment_month')
-        .eq('organization_id', userData.organization_id)
+        .eq('organization_id', organizationId)
         .in('student_id', enrichedStudents.map(s => s.id));
 
       if (!paidError && paidPayments) {
@@ -143,7 +99,7 @@ export async function GET(request: NextRequest) {
       const { data: overduePayments, error: overdueError } = await supabase
         .from('fee_payments')
         .select('student_id, payment_month, status')
-        .eq('organization_id', userData.organization_id)
+        .eq('organization_id', organizationId)
         .eq('status', 'Overdue')
         .in('student_id', enrichedStudents.map(s => s.id));
 
@@ -168,7 +124,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ students: enrichedStudents }, { status: 200, headers: response.headers });
+    return NextResponse.json({ students: enrichedStudents }, { status: 200 });
   } catch (error) {
     console.error('Unexpected error in GET /api/students:', error);
     return NextResponse.json(
@@ -181,56 +137,13 @@ export async function GET(request: NextRequest) {
 // POST /api/students - Create a new student
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const supabase = await createRouteSupabaseClient(request);
+    const { user, organizationId } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (!user || !organizationId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
-    }
-
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData?.organization_id) {
-      console.error('POST /api/students - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
       );
     }
 
@@ -262,7 +175,7 @@ export async function POST(request: NextRequest) {
     const { count, error: countError } = await supabase
       .from('students')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', userData.organization_id);
+      .eq('organization_id', organizationId);
 
     if (countError) {
       console.error('Error counting students:', countError);
@@ -338,7 +251,7 @@ export async function POST(request: NextRequest) {
         .from('classes')
         .select('id')
         .eq('id', class_id)
-        .eq('organization_id', userData.organization_id)
+        .eq('organization_id', organizationId)
         .eq('is_active', true)
         .single();
 
@@ -354,7 +267,7 @@ export async function POST(request: NextRequest) {
     const { data: newStudent, error: insertError } = await supabase
       .from('students')
       .insert({
-        organization_id: userData.organization_id,
+        organization_id: organizationId,
         name,
         class_id: class_id || null,
         roll_number,
@@ -394,7 +307,7 @@ export async function POST(request: NextRequest) {
       const { error: profileError } = await (supabaseAdmin as any).from('student_profiles').insert({
         user_id: authUserId,
         student_id: newStudent.id,
-        organization_id: userData.organization_id,
+        organization_id: organizationId,
         email: studentEmail,
         is_active: status === 'active',
         must_change_password: true
@@ -450,7 +363,7 @@ export async function POST(request: NextRequest) {
       .from('fee_payments')
       .insert({
         student_id: newStudent.id,
-        organization_id: userData.organization_id,
+        organization_id: organizationId,
         amount: Number(monthly_fee),
         payment_month: paymentMonth,
         payment_date: admission_date,
@@ -478,7 +391,7 @@ export async function POST(request: NextRequest) {
     const { error: logError } = await supabase
       .from('activity_logs')
       .insert({
-        organization_id: userData.organization_id,
+        organization_id: organizationId,
         activity_type: 'admission',
         description: activityDescription,
         related_entity_type: 'student',
@@ -501,7 +414,7 @@ export async function POST(request: NextRequest) {
     sendAdmissionWelcome({
       studentId: newStudent.id,
       studentName: name,
-      organizationId: userData.organization_id,
+      organizationId,
       classId: class_id,
       admissionDate: admission_date,
       parentName: parent_name,
@@ -515,7 +428,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { student: newStudent, message: 'Student admitted successfully' },
-      { status: 201, headers: response.headers }
+      { status: 201 }
     );
   } catch (error) {
     console.error('Unexpected error in POST /api/students:', error);
