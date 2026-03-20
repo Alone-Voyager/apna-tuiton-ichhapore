@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
+
   // If Supabase env vars aren't available during build time, skip auth checks.
   // This prevents Next build from failing when environment variables are provided
   // at runtime or via build args in CI.
@@ -67,12 +68,12 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // If not signed in and accessing protected routes → login
+  // If not signed in and accessing protected routes -> login
   if (!session && (pathname.startsWith('/dashboard') || pathname.startsWith('/student'))) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If signed in and on login/signup → figure out where to send them
+  // If signed in and on login/signup -> figure out where to send them
   if (session && (pathname === '/login' || pathname === '/signup')) {
     // Check if they're a student
     const { data: studentProfile } = await supabase
@@ -91,7 +92,7 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-// Configure which routes use this middleware
+// Configure which routes use this proxy.
 export const config = {
   matcher: [
     /*

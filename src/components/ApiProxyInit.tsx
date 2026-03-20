@@ -1,6 +1,58 @@
 "use client";
 
 import { useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
+
+function isIpAddress(hostname: string) {
+  // IPv4 and bracketless IPv6 detection.
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(":");
+}
+
+function resolveApiBaseUrl() {
+  const nativeDefault = "https://apna-tuiton-ichhapore.vercel.app";
+  const fromEnv = process.env.NEXT_PUBLIC_API_PROXY_TARGET?.trim();
+  if (fromEnv) {
+    const cleaned = fromEnv.replace(/\/$/, "");
+
+    // Avoid localhost targets on native apps where requests originate from the app container.
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const parsed = new URL(cleaned);
+        const host = parsed.hostname.toLowerCase();
+        if (host === "localhost" || host === "127.0.0.1" || isIpAddress(host)) {
+          return nativeDefault;
+        }
+
+        // Native builds should only use secure remote endpoints.
+        if (parsed.protocol !== "https:") {
+          return nativeDefault;
+        }
+      } catch {
+        return nativeDefault;
+      }
+    }
+
+    return cleaned;
+  }
+
+  if (!Capacitor.isNativePlatform()) {
+    return null;
+  }
+
+  const platform = Capacitor.getPlatform();
+
+  // Android emulator reaches the host machine via 10.0.2.2.
+  if (platform === "android") {
+    return nativeDefault;
+  }
+
+  // iOS simulator can use localhost to access host machine services.
+  if (platform === "ios") {
+    return nativeDefault;
+  }
+
+  return null;
+}
 
 /**
  * Android APKs built via static export run on `http://localhost` (Capacitor)
@@ -14,53 +66,58 @@ import { useEffect } from "react";
  */
 export function ApiProxyInit() {
   useEffect(() => {
-    // Only run this in the browser environment
-    if (typeof window !== "undefined") {
-      // Detect if running inside Android emulator vs physical device
-      // Android emulators use 10.0.2.2 to reach the host machine's localhost
-      // Physical devices need the actual LAN IP
-      const userAgent = navigator.userAgent || "";
-      
-      // For Android Emulator, 10.0.2.2 maps to host's localhost
-      // For physical devices, use your machine's LAN IP
-      const API_BASE_URL = "http://10.0.2.2:3000";
-
-      const originalFetch = window.fetch;
-
-      window.fetch = async (...args) => {
-        let [resource, config] = args;
-        
-        // If the request is a string path starting with /api/
-        if (typeof resource === 'string' && resource.startsWith('/api/')) {
-          const proxiedUrl = `${API_BASE_URL}${resource}`;
-          console.log(`[API Proxy] Redirecting: ${resource} -> ${proxiedUrl}`);
-          resource = proxiedUrl;
-        } 
-        // If the request object is passed (URL or Request)
-        else if (resource instanceof Request && new URL(resource.url).pathname.startsWith('/api/')) {
-          const newUrl = new URL(resource.url);
-          // Only overwrite if it was a relative-like path originally (origin matches current)
-          if (newUrl.origin === window.location.origin) {
-            const proxiedUrl = `${API_BASE_URL}${newUrl.pathname}${newUrl.search}`;
-            console.log(`[API Proxy] Redirecting Request: ${resource.url} -> ${proxiedUrl}`);
-            resource = new Request(proxiedUrl, resource);
-          }
-        } else if (resource instanceof URL && resource.pathname.startsWith('/api/')) {
-             if (resource.origin === window.location.origin) {
-                 resource = new URL(`${API_BASE_URL}${resource.pathname}${resource.search}`);
-             }
-        }
-
-        try {
-          return await originalFetch(resource, config);
-        } catch (err) {
-          console.error(`[API Proxy] Fetch FAILED for: ${typeof resource === 'string' ? resource : (resource instanceof Request ? resource.url : resource.toString())}`, err);
-          throw err;
-        }
-      };
-      
-      console.log("[API Proxy] Interceptor active. Redirecting /api/* to " + API_BASE_URL);
+    if (typeof window === "undefined") {
+      return;
     }
+
+    const API_BASE_URL = resolveApiBaseUrl();
+    if (!API_BASE_URL) {
+      return;
+    }
+
+    const proxiedWindow = window as Window & { __apiProxyInstalled?: boolean };
+    if (proxiedWindow.__apiProxyInstalled) {
+      return;
+    }
+
+    const originalFetch = window.fetch;
+
+    window.fetch = async (...args) => {
+      let [resource, config] = args;
+
+      if (typeof resource === "string" && resource.startsWith("/api/")) {
+        resource = `${API_BASE_URL}${resource}`;
+      } else if (
+        resource instanceof Request &&
+        new URL(resource.url).pathname.startsWith("/api/")
+      ) {
+        const newUrl = new URL(resource.url);
+        if (newUrl.origin === window.location.origin) {
+          const proxiedUrl = `${API_BASE_URL}${newUrl.pathname}${newUrl.search}`;
+          resource = new Request(proxiedUrl, resource);
+        }
+      } else if (resource instanceof URL && resource.pathname.startsWith("/api/")) {
+        if (resource.origin === window.location.origin) {
+          resource = new URL(`${API_BASE_URL}${resource.pathname}${resource.search}`);
+        }
+      }
+
+      try {
+        return await originalFetch(resource, config);
+      } catch (err) {
+        const attemptedUrl =
+          typeof resource === "string"
+            ? resource
+            : resource instanceof Request
+              ? resource.url
+              : resource.toString();
+        console.error(`[API Proxy] Fetch FAILED for: ${attemptedUrl}`, err);
+        throw err;
+      }
+    };
+
+    proxiedWindow.__apiProxyInstalled = true;
+    console.log("[API Proxy] Interceptor active. Redirecting /api/* to " + API_BASE_URL);
   }, []);
 
   return null;

@@ -159,7 +159,15 @@ export default function SignupPage() {
         }),
       });
 
-      const result = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const result = contentType.includes('application/json') ? await response.json() : null;
+
+      if (!contentType.includes('application/json')) {
+        const text = await response.text();
+        setError(`Signup endpoint returned non-JSON response (${response.status}): ${text.slice(0, 120)}`);
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok) {
         setError(result.error || 'Failed to create student account');

@@ -31,7 +31,18 @@ export async function signUp(
       }),
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : null;
+
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      return {
+        data: null,
+        error: new Error(
+          `Signup endpoint returned non-JSON response (${response.status}): ${text.slice(0, 120)}`
+        ),
+      };
+    }
 
     if (!response.ok) {
       return { data: null, error: new Error(data.error || 'Signup failed') };
@@ -48,25 +59,49 @@ export async function signUp(
  */
 export async function signIn(email: string, password: string) {
   try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return { data: null, error: new Error(data.error || 'Login failed') };
+    if (signInError || !signInData.user) {
+      return {
+        data: null,
+        error: signInError || new Error('Login failed'),
+      };
     }
+
+    const userId = signInData.user.id;
+
+    const { data: studentProfile } = await supabase
+      .from('student_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (studentProfile) {
+      return {
+        data: {
+          session: true,
+          role: 'student',
+          redirect: '/student/dashboard',
+        },
+        error: null,
+      };
+    }
+
+    const { data: adminProfile } = await supabase
+      .from('admin_profiles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     return {
       data: {
         session: true,
-        role: data.role,
-        redirect: data.redirect ?? '/dashboard',
+        role: adminProfile?.role ?? 'admin',
+        redirect: '/dashboard',
       },
       error: null,
     };
@@ -84,8 +119,19 @@ export async function signOut() {
       method: 'POST',
     });
 
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : null;
+
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      return {
+        error: new Error(
+          `Logout endpoint returned non-JSON response (${response.status}): ${text.slice(0, 120)}`
+        ),
+      };
+    }
+
     if (!response.ok) {
-      const data = await response.json();
       return { error: new Error(data.error || 'Logout failed') };
     }
 
