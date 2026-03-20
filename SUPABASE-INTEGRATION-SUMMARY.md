@@ -2,6 +2,7 @@
 
 ## 📦 Files Created
 
+
 ### Core Supabase Files (src/lib/supabase/)
 - **client.ts** - Supabase client initialization (browser & admin clients)
 - **types.ts** - TypeScript type definitions for all database tables
