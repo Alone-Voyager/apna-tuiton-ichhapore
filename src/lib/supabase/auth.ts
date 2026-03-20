@@ -115,24 +115,10 @@ export async function signIn(email: string, password: string) {
  */
 export async function signOut() {
   try {
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-    });
+    const { error } = await supabase.auth.signOut();
 
-    const contentType = response.headers.get('content-type') || '';
-    const data = contentType.includes('application/json') ? await response.json() : null;
-
-    if (!contentType.includes('application/json')) {
-      const text = await response.text();
-      return {
-        error: new Error(
-          `Logout endpoint returned non-JSON response (${response.status}): ${text.slice(0, 120)}`
-        ),
-      };
-    }
-
-    if (!response.ok) {
-      return { error: new Error(data.error || 'Logout failed') };
+    if (error) {
+      return { error };
     }
 
     return { error: null };
