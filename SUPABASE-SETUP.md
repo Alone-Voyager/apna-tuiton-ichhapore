@@ -2,6 +2,7 @@
 
 ## ✅ What's Already Done
 
+
 - ✅ @supabase/supabase-js package installed
 - ✅ Environment variables configured in `.env`
 - ✅ Supabase clients created (`supabase` and `supabaseAdmin`)
