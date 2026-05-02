@@ -537,8 +537,9 @@ export default function CollectedFeesPage() {
       })();
 
   return (
-    <div>
-          {/* Hero Section */}
+    <div className="min-h-full bg-slate-50">
+      <main className="flex-1 overflow-y-auto">
+        {/* Hero Section */}
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-4 sm:p-6">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Fee Collections Dashboard</h1>
@@ -1030,6 +1031,8 @@ export default function CollectedFeesPage() {
               </div>
             )}
           </div>
+        </main>
+
       {/* Transaction Detail Modal */}
       {showDetailModal && selectedTransaction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4">

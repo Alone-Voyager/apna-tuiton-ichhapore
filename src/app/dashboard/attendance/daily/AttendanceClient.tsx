@@ -219,10 +219,7 @@ export default function AttendanceClient() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-                <div className="flex-1 lg:ml-64">
-          
+    <div className="min-h-full bg-gray-50">
           <div className="p-4 lg:p-6">
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
@@ -465,8 +462,6 @@ export default function AttendanceClient() {
               </div>
             )}
           </div>
-        </div>
-      </div>
     </div>
   );
 }

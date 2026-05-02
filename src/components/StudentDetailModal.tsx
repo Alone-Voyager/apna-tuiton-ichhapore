@@ -151,7 +151,7 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <div className="inline-block min-w-full align-middle">
           <table className="w-full">
             <thead>
@@ -205,7 +205,7 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <div className="inline-block min-w-full align-middle">
           <table className="w-full">
             <thead>
@@ -271,7 +271,7 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <div className="inline-block min-w-full align-middle">
           <table className="w-full">
             <thead>
@@ -326,12 +326,12 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-100 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-lg w-full max-w-4xl max-h-dvh sm:max-h-[90vh] overflow-hidden flex flex-col pb-[env(safe-area-inset-bottom)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 shrink-0">
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-linear-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-lg shrink-0">
               {student.name.charAt(0)}
             </div>
             <div className="min-w-0">
@@ -341,13 +341,13 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg flex-shrink-0">
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg shrink-0">
             <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 overflow-x-auto flex-shrink-0 scrollbar-hide">
+        <div className="flex border-b border-slate-200 overflow-x-auto shrink-0 scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -371,11 +371,11 @@ export default function StudentDetailModal({ student, isOpen, onClose }: Student
         <div className="p-4 sm:p-6 overflow-y-auto flex-1">{renderContent()}</div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-6 border-t border-slate-200 flex items-center justify-end space-x-2 sm:space-x-3 flex-shrink-0">
-          <Button variant="outline" onClick={onClose} className="text-sm sm:text-base bg-transparent">
+        <div className="p-4 sm:p-6 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 shrink-0">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto text-sm sm:text-base bg-transparent">
             Close
           </Button>
-          <Button className="text-sm sm:text-base">
+          <Button className="w-full sm:w-auto text-sm sm:text-base">
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>

@@ -186,30 +186,20 @@ export default function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="flex">
-                    <div className="flex-1 lg:ml-64">
-            
-            <main className="p-4 lg:p-6">
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-red-500" />
-              </div>
-            </main>
+      <div className="min-h-full bg-white">
+        <main className="p-4 lg:p-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-red-500" />
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex">
-                
-        <div className="flex-1 lg:ml-64">
-          
-          
-          <main className="p-4 lg:p-6 max-w-7xl mx-auto w-full">
-            {/* Success/Error Messages */}
+    <div className="min-h-full bg-white">
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        {/* Success/Error Messages */}
             {error && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
@@ -481,9 +471,7 @@ export default function IntegrationsPage() {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

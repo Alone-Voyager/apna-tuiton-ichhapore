@@ -12,14 +12,9 @@ export default function DataManagementPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="flex">
-        
-        <div className="flex-1 lg:ml-64">
-          
-
-          <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
-            <div className="mb-6">
+    <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
+        <div className="mb-6">
               <Link href="/">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -68,9 +63,7 @@ export default function DataManagementPage() {
               </TabsContent>
               */}
             </Tabs>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

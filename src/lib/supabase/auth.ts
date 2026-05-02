@@ -59,49 +59,28 @@ export async function signUp(
  */
 export async function signIn(email: string, password: string) {
   try {
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (signInError || !signInData.user) {
-      return {
-        data: null,
-        error: signInError || new Error('Login failed'),
-      };
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { data: null, error: new Error(data.error || 'Login failed') };
     }
 
-    const userId = signInData.user.id;
-
-    const { data: studentProfile } = await supabase
-      .from('student_profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (studentProfile) {
-      return {
-        data: {
-          session: true,
-          role: 'student',
-          redirect: '/student/dashboard',
-        },
-        error: null,
-      };
-    }
-
-    const { data: adminProfile } = await supabase
-      .from('admin_profiles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Force a reload of the browser client session since cookies were set by the server
+    await supabase.auth.getSession();
 
     return {
       data: {
         session: true,
-        role: adminProfile?.role ?? 'admin',
-        redirect: '/dashboard',
+        role: data.role,
+        redirect: data.redirect || (data.role === 'student' ? '/student/dashboard' : '/dashboard'),
       },
       error: null,
     };

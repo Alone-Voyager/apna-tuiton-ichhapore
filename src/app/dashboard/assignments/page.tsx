@@ -525,11 +525,8 @@ export default function AdminAssignmentsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
-            <div className="flex">
-                                <div className="flex-1 lg:ml-64">
-                    
-                    <main className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6 relative overflow-hidden">
+        <div className="min-h-full bg-[#F8FAFC]">
+      <main className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6 relative overflow-hidden">
 
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div className="flex items-center gap-3 mb-2">

@@ -297,29 +297,20 @@ export default function FeesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-slate-50">
-        
-        <div className="flex-1 flex flex-col lg:ml-64">
-          
-
+      <div className="min-h-full bg-slate-50">
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
               <p className="text-slate-600">Loading fee statistics...</p>
             </div>
           </main>
-        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-slate-50">
-        
-        <div className="flex-1 flex flex-col lg:ml-64">
-          
-
+      <div className="min-h-full bg-slate-50">
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 flex items-center justify-center">
             <div className="text-center">
               <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -332,17 +323,12 @@ export default function FeesPage() {
               </button>
             </div>
           </main>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      
-      <div className="flex-1 flex flex-col lg:ml-64">
-        
-
+    <div className="min-h-full bg-slate-50">
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6">
           {/* Month Selector for Testing - COMMENTED OUT FOR PRODUCTION */}
 
@@ -909,7 +895,6 @@ export default function FeesPage() {
             </>
           )}
         </main>
-      </div>
 
       {/* Payment Modal */}
       {showPaymentModal && selectedStudent && selectedPayment && (

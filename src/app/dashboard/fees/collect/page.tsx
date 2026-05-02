@@ -127,11 +127,7 @@ export default function CollectFeesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-            
-      <div className="flex-1 flex flex-col lg:ml-64">
-        
-        
+    <div className="min-h-full bg-slate-50">
         <main className="flex-1 overflow-y-auto">
           {/* Hero Section */}
           <div className="bg-gradient-to-br from-orange-500 to-red-600 text-white p-4 sm:p-6">
@@ -301,7 +297,6 @@ export default function CollectFeesPage() {
             </div>
           </div>
         </main>
-      </div>
 
       {/* Payment Modal */}
       {showPaymentModal && selectedStudent && (

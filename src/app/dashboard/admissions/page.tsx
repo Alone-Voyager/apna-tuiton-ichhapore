@@ -173,12 +173,7 @@ export default function Admissions() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex">
-        
-        <div className="flex-1 lg:ml-64">
-          
-
+    <div className="min-h-full bg-white">
           <main className="p-4 lg:p-6 pb-24 lg:pb-6">
             <div className="space-y-6 lg:space-y-8">
               {successMessage && (
@@ -391,8 +386,6 @@ export default function Admissions() {
               {/* Admission form was replaced with a separate page (redirect on button click) */}
             </div>
           </main>
-        </div>
-      </div>
     </div>
   );
 }

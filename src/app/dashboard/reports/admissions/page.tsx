@@ -421,13 +421,8 @@ export default function AdmissionsReport() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-                
-        <div className="flex-1 lg:ml-64">
-          
-          
-          <main className="p-4 lg:p-6">
+    <div className="min-h-full bg-gray-50">
+      <main className="p-4 lg:p-6">
             <div className="space-y-6">
               {/* Filter Controls */}
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 lg:p-6">
@@ -723,8 +718,6 @@ export default function AdmissionsReport() {
               */}
             </div>
           </main>
-        </div>
-      </div>
     </div>
   );
 }

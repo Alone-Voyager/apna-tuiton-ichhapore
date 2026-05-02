@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import Sidebar from '../../../../components/Sidebar'
-import Header from '../../../../components/Header'
 import { Button } from '../../../../components/ui/button'
 import { Card } from '../../../../components/ui/card'
 
@@ -45,7 +43,6 @@ import { Suspense } from 'react'
 
 function StudentDetailsContent() {
   const searchParams = useSearchParams()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [student, setStudent] = useState<Student | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,10 +111,7 @@ function StudentDetailsContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-        <div className="flex">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <div className="flex-1 lg:ml-64">
+      <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
             <main className="container mx-auto px-4 py-8">
               <div className="flex items-center justify-center h-96">
                 <div className="text-center">
@@ -126,18 +120,13 @@ function StudentDetailsContent() {
                 </div>
               </div>
             </main>
-          </div>
-        </div>
       </div>
     )
   }
 
   if (error || !student) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-        <div className="flex">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <div className="flex-1 lg:ml-64">
+      <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
             <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
               <div className="container mx-auto px-4 py-4">
                 <Link href="/dashboard/students">
@@ -155,8 +144,6 @@ function StudentDetailsContent() {
                 </div>
               </Card>
             </main>
-          </div>
-        </div>
       </div>
     )
   }
@@ -176,11 +163,7 @@ function StudentDetailsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        
-  <div className="flex-1 lg:ml-64">
+    <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
           <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
             <div className="container mx-auto px-4 py-4">
               <Link href="/dashboard/students">
@@ -195,11 +178,11 @@ function StudentDetailsContent() {
           <main className="container mx-auto px-4 py-8">
             {/* Student Header */}
             <Card className="mb-6">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                   <div>
                     <h1 className="text-2xl font-semibold text-gray-900">{student.name}</h1>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-sm text-gray-600">{student.roll_number}</span>
                       <span className="text-sm text-gray-400">•</span>
                       {student.classes?.name && (
@@ -215,40 +198,46 @@ function StudentDetailsContent() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <EditStudentDetails
-                      studentId={student.id}
-                      studentName={student.name}
-                      currentData={{
-                        name: student.name,
-                        admission_date: student.admission_date,
-                        date_of_birth: student.date_of_birth,
-                        gender: student.gender,
-                        email: student.email,
-                        address: student.address,
-                        monthly_fee: student.monthly_fee,
-                        status: student.status,
-                        notes: student.notes,
-                        roll_number: student.roll_number,
-                      }}
-                      onUpdate={refetchStudent}
-                    />
-                    <PromoteStudent
-                      studentId={student.id}
-                      studentName={student.name}
-                      currentClassId={student.class_id}
-                      currentClassName={student.classes?.name}
-                      onPromotionComplete={refetchStudent}
-                    />
-                    <RecordPayment 
-                      studentId={student.id}
-                      studentName={student.name}
-                      onPaymentRecorded={refetchStudent}
-                    />
+                  <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
+                    <div className="flex-1 sm:flex-none">
+                      <EditStudentDetails
+                        studentId={student.id}
+                        studentName={student.name}
+                        currentData={{
+                          name: student.name,
+                          admission_date: student.admission_date,
+                          date_of_birth: student.date_of_birth,
+                          gender: student.gender,
+                          email: student.email,
+                          address: student.address,
+                          monthly_fee: student.monthly_fee,
+                          status: student.status,
+                          notes: student.notes,
+                          roll_number: student.roll_number,
+                        }}
+                        onUpdate={refetchStudent}
+                      />
+                    </div>
+                    <div className="flex-1 sm:flex-none">
+                      <PromoteStudent
+                        studentId={student.id}
+                        studentName={student.name}
+                        currentClassId={student.class_id}
+                        currentClassName={student.classes?.name}
+                        onPromotionComplete={refetchStudent}
+                      />
+                    </div>
+                    <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                      <RecordPayment 
+                        studentId={student.id}
+                        studentName={student.name}
+                        onPaymentRecorded={refetchStudent}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-8 border-t border-slate-100 pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-medium">Parent Information</h2>
                     <EditParentDetails
@@ -261,11 +250,11 @@ function StudentDetailsContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-600">Parent Name</label>
+                      <p className="text-sm text-gray-600 mb-1">Parent Name</p>
                       <p className="text-gray-900">{student.parent_name}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-600">WhatsApp</label>
+                      <p className="text-sm text-gray-600 mb-1">WhatsApp</p>
                       <p className="text-gray-900">{student.whatsapp || student.phone}</p>
                     </div>
                   </div>
@@ -276,21 +265,21 @@ function StudentDetailsContent() {
             {/* Summary Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <Card>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <h3 className="text-sm font-medium text-gray-600">Total Pending Months</h3>
                   <p className="text-2xl font-semibold text-red-600 mt-2">{student.totalPendingMonths}</p>
                 </div>
               </Card>
 
               <Card>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <h3 className="text-sm font-medium text-gray-600">Pending Amount</h3>
                   <p className="text-2xl font-semibold text-red-600 mt-2">{formatCurrency(student.pendingAmount)}</p>
                 </div>
               </Card>
 
               <Card>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <h3 className="text-sm font-medium text-gray-600">Total Paid</h3>
                   <p className="text-2xl font-semibold text-green-600 mt-2">{formatCurrency(student.totalPaid)}</p>
                 </div>
@@ -299,7 +288,7 @@ function StudentDetailsContent() {
 
             {student.pendingMonths.length > 0 && (
               <Card className="mb-6 border-red-200 bg-red-50">
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <h3 className="text-sm font-medium text-red-800 mb-2">Pending Months</h3>
                   <p className="text-sm text-red-700">
                     {student.pendingMonths.join(', ')}
@@ -321,8 +310,6 @@ function StudentDetailsContent() {
             {/* Attendance Calendar */}
             <AttendanceCalendar studentId={student.id} />
           </main>
-        </div>
-      </div>
     </div>
   )
 }

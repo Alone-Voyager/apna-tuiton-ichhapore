@@ -334,14 +334,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex">
-        
-        <div className="flex-1 lg:ml-64">
-          
-
-          <main className="p-4 lg:p-6 pb-24 lg:pb-6">
-            <div className="flex flex-col xl:flex-row gap-6 lg:gap-8">
+    <div className="min-h-full bg-white">
+      <main className="p-4 lg:p-6 pb-24 lg:pb-6">
+        <div className="flex flex-col xl:flex-row gap-6 lg:gap-8">
               {/* Settings Navigation */}
               <div className="xl:w-64 shrink-0">
                 <div className="bg-white border border-slate-200 rounded-2xl p-3 lg:p-4 shadow-sm">
@@ -411,9 +406,7 @@ export default function Settings() {
                 )}
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

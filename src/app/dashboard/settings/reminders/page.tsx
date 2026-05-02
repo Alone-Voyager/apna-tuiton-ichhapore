@@ -122,14 +122,9 @@ export default function Reminders() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-          
-        <div className="flex-1 lg:ml-64">
-          
-          
-          <main className="p-4 lg:p-6">
-            <div className="space-y-6">
+    <div className="min-h-full bg-gray-50">
+      <main className="p-4 lg:p-6">
+        <div className="space-y-6">
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white border border-slate-200 rounded-lg p-4 lg:p-6">
@@ -436,9 +431,7 @@ export default function Reminders() {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

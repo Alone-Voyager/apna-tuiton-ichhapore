@@ -10,7 +10,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email: rawEmail, password } = body;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim() : rawEmail;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine if login is admin email or student username
-    const isStudentId = email.toUpperCase().startsWith('AT-');
+    const isStudentId = !email.includes('@');
     let loginEmail = email;
 
     const bcrypt = require('bcryptjs');
@@ -63,6 +64,28 @@ export async function POST(request: NextRequest) {
 
       // Transform to dummy email strictly for downstream Supabase session binding
       loginEmail = `${email.toLowerCase()}@apnatuition.local`;
+
+      // 4. Force-sync the password to Supabase Auth so signInWithPassword never fails due to desync
+      // We need to fetch the auth user ID to update it.
+      const { data: studentRecord } = await supabaseAdmin
+        .from('students')
+        .select('id')
+        .eq('roll_number', email.toUpperCase())
+        .single();
+
+      if (studentRecord) {
+        const { data: profile } = await supabaseAdmin
+          .from('student_profiles')
+          .select('user_id')
+          .eq('student_id', studentRecord.id)
+          .single();
+        
+        if (profile?.user_id) {
+           await supabaseAdmin.auth.admin.updateUserById(profile.user_id, {
+              password: password
+           });
+        }
+      }
     }
 
     const response = NextResponse.json({ success: true, role: 'admin' });

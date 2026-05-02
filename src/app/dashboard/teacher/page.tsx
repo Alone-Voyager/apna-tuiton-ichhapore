@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, User, Plus, X, Eye, Edit, Trash2, Phone, Mail, GraduationCap, Calendar, Award, IndianRupee, BookOpen } from 'lucide-react';
 import PhoneInput from 'react-phone-number-input';
+// @ts-ignore
 import 'react-phone-number-input/style.css';
 import { supabase } from '../../../lib/supabase/client';
 
@@ -149,21 +150,18 @@ export default function TeacherPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex">
-                <div className="flex-1 lg:ml-64">
-          
-          <main className="p-4">
-            {/* Header Section */}
-            <div className="bg-gradient-to-br from-blue-50 via-white to-red-50 rounded-2xl p-4 mb-4 border border-slate-100 shadow-sm">
+    <div className="min-h-full bg-white">
+      <main className="p-4">
+        {/* Header Section */}
+            <div className="bg-linear-to-br from-blue-50 via-white to-red-50 rounded-2xl p-4 mb-4 border border-slate-100 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-red-600 bg-clip-text text-transparent">Teaching Faculty</h1>
+                  <h1 className="text-2xl font-bold bg-linear-to-r from-blue-900 to-red-600 bg-clip-text text-transparent">Teaching Faculty</h1>
                   <p className="text-slate-600 text-sm mt-1">Manage your educational team</p>
                 </div>
                 <button
                   onClick={() => setDialogOpen(true)}
-                  className="inline-flex items-center bg-gradient-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-4 py-2 rounded-xl font-medium space-x-2 shadow-lg shadow-blue-200 transition-all duration-200 hover:shadow-xl hover:shadow-blue-300 transform hover:-translate-y-0.5"
+                  className="inline-flex items-center bg-linear-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-4 py-2 rounded-xl font-medium space-x-2 shadow-lg shadow-blue-200 transition-all duration-200 hover:shadow-xl hover:shadow-blue-300 transform hover:-translate-y-0.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Teacher</span>
@@ -182,7 +180,7 @@ export default function TeacherPage() {
                   </button>
                   <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div className="text-center border-b border-slate-100 pb-4 mb-4">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-red-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
+                      <h2 className="text-2xl font-bold bg-linear-to-r from-blue-900 to-red-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
                         <GraduationCap className="w-6 h-6 text-blue-900" />
                         Register New Teacher
                       </h2>
@@ -363,7 +361,7 @@ export default function TeacherPage() {
                       </button>
                       <button
                         type="submit"
-                        className="w-full sm:w-auto bg-gradient-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-8 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-all duration-200 hover:shadow-xl hover:shadow-blue-300 transform hover:-translate-y-0.5"
+                        className="w-full sm:w-auto bg-linear-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-8 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-all duration-200 hover:shadow-xl hover:shadow-blue-300 transform hover:-translate-y-0.5"
                       >
                         <Save className="w-4 h-4" />
                         <span>Save Teacher</span>
@@ -379,7 +377,7 @@ export default function TeacherPage() {
                 <div key={teacher.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 hover:border-blue-200 group">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-900 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                      <div className="w-10 h-10 bg-linear-to-br from-blue-900 to-red-600 rounded-full flex items-center justify-center shadow-lg">
                         <span className="text-white font-semibold text-sm">{teacher.name.charAt(0)}</span>
                       </div>
                       <div>
@@ -446,7 +444,7 @@ export default function TeacherPage() {
                 <p className="text-slate-500 mb-4">Start building your teaching team by adding faculty members.</p>
                 <button
                   onClick={() => setDialogOpen(true)}
-                  className="inline-flex items-center bg-gradient-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-4 py-2 rounded-xl font-medium space-x-2 shadow-lg shadow-blue-200 transition-all duration-200"
+                  className="inline-flex items-center bg-linear-to-r from-blue-900 to-red-600 hover:from-blue-900 hover:to-red-700 text-white px-4 py-2 rounded-xl font-medium space-x-2 shadow-lg shadow-blue-200 transition-all duration-200"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add First Teacher</span>
@@ -454,8 +452,6 @@ export default function TeacherPage() {
               </div>
             )}
           </main>
-        </div>
-      </div>
     </div>
   );
 }

@@ -163,12 +163,7 @@ export default function NewAdmission() {
   };
 
   return (
-    <div className="minF-h-screen bg-white">
-      <div className="flex">
-        
-        <div className="flex-1 lg:ml-64">
-          
-
+    <div className="min-h-full bg-white">
           <main className="p-4 lg:p-6">
             {/* Hero Section */}
             <div className="bg-gradient-to-r from-blue-900 to-red-600 rounded-2xl p-4 lg:p-6 text-white mb-6">
@@ -458,8 +453,6 @@ export default function NewAdmission() {
               </form>
             </div>
           </main>
-        </div>
-      </div>
 
       {/* Success Modal */}
       {showSuccessModal && (

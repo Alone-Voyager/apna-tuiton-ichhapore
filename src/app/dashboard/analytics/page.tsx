@@ -81,13 +81,8 @@ export default function Analytics() {
   const currentData = getAnalyticsData(selectedPeriod);
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex">
-          
-        <div className="flex-1 lg:ml-64">
-          
-          
-          <main className="p-4 lg:p-6">
+    <div className="min-h-full bg-white">
+      <main className="p-4 lg:p-6">
             <div className="space-y-6 lg:space-y-8">
               {/* Analytics Header */}
               <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 rounded-2xl lg:rounded-3xl p-6 lg:p-8 text-white relative overflow-hidden">
@@ -394,8 +389,6 @@ export default function Analytics() {
               </div>
             </div>
           </main>
-        </div>
-      </div>
     </div>
   );
 }

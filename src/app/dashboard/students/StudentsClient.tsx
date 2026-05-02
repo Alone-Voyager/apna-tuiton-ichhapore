@@ -552,18 +552,18 @@ export default function StudentsClient() {
   };
 
   return (
-    <div className="p-4 lg:p-6">
+    <div className="p-3 sm:p-4 lg:p-6">
         <div className="space-y-4 lg:space-y-6">
           {/* Class Filter Info */}
           {selectedClass && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row gap-2 sm:gap-0  items-center justify-between">
-              <div className="flex items-center space-x-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row gap-2 sm:gap-0 items-start sm:items-center justify-between">
+              <div className="flex items-start sm:items-center space-x-3">
                 <Filter className="text-blue-600 w-4 h-4" />
-                <span className="text-blue-800 font-medium">Showing students from: {selectedClass}</span>
+                <span className="text-blue-800 font-medium text-sm sm:text-base">Showing students from: {selectedClass}</span>
               </div>
               <a
                 href="/dashboard/students"
-                className="text-blue-600 hover:text-blue-800 flex items-center font-medium text-sm whitespace-nowrap"
+                className="text-blue-600 hover:text-blue-800 flex items-center font-medium text-sm whitespace-nowrap self-start sm:self-auto"
               >
                 <X className="mr-1 w-4 h-4" />
                 Clear Filter
@@ -601,8 +601,8 @@ export default function StudentsClient() {
                 >
                   <button
                     onClick={() => setSelectedTab('all')}
-                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 ${selectedTab === 'all'
-                      ? 'bg-gradient-to-r from-indigo-400 to-indigo-500 text-white shadow-md shadow-indigo-200/50'
+                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0 ${selectedTab === 'all'
+                      ? 'bg-linear-to-r from-indigo-400 to-indigo-500 text-white shadow-md shadow-indigo-200/50'
                       : 'text-slate-500 bg-white border border-slate-100 shadow-sm'
                       }`}
                   >
@@ -610,8 +610,8 @@ export default function StudentsClient() {
                   </button>
                   <button
                     onClick={() => setSelectedTab('paid')}
-                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 ${selectedTab === 'paid'
-                      ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white shadow-md shadow-emerald-200/50'
+                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0 ${selectedTab === 'paid'
+                      ? 'bg-linear-to-r from-emerald-400 to-emerald-500 text-white shadow-md shadow-emerald-200/50'
                       : 'text-slate-500 bg-white border border-slate-100 shadow-sm'
                       }`}
                   >
@@ -619,8 +619,8 @@ export default function StudentsClient() {
                   </button>
                   <button
                     onClick={() => setSelectedTab('pending')}
-                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 ${selectedTab === 'pending'
-                      ? 'bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-md shadow-rose-200/50'
+                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0 ${selectedTab === 'pending'
+                      ? 'bg-linear-to-r from-rose-400 to-rose-500 text-white shadow-md shadow-rose-200/50'
                       : 'text-slate-500 bg-white border border-slate-100 shadow-sm'
                       }`}
                   >
@@ -628,8 +628,8 @@ export default function StudentsClient() {
                   </button>
                   <button
                     onClick={() => setSelectedTab('incomplete')}
-                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 ${selectedTab === 'incomplete'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-md shadow-amber-200/50'
+                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 whitespace-nowrap shrink-0 ${selectedTab === 'incomplete'
+                      ? 'bg-linear-to-r from-amber-400 to-amber-500 text-white shadow-md shadow-amber-200/50'
                       : 'text-slate-500 bg-white border border-slate-100 shadow-sm'
                       }`}
                   >
@@ -661,7 +661,7 @@ export default function StudentsClient() {
             ) : (
               <>
                 {/* Mobile Card View */}
-                <div className="p-3 sm:p-4 space-y-3">
+                <div className="lg:hidden p-3 sm:p-4 space-y-3">
                   {paginatedStudents.map((student: Student) => (
                     <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 transition-all active:scale-[0.98]" style={{ padding: '14px 12px 14px 14px' }}>
                       <div className="flex items-start justify-between mb-2">
@@ -691,15 +691,15 @@ export default function StudentsClient() {
                           {(student.payment_months?.length || student.overdue_months?.length) ? (
                             <div className="flex flex-col gap-1 mb-2">
                               {student.payment_months && student.payment_months.length > 0 && (
-                                <div className="flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded inline-flex self-start">
+                                <div className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded self-start">
                                   <span className="font-semibold">Paid:</span>
-                                  <span>{student.payment_months.join(', ')}</span>
+                                  <span className="wrap-break-word">{student.payment_months.join(', ')}</span>
                                 </div>
                               )}
                               {student.overdue_months && student.overdue_months.length > 0 && (
-                                <div className="flex items-center gap-1 text-[11px] bg-rose-50 text-rose-700 px-2 py-1 rounded inline-flex self-start">
+                                <div className="inline-flex items-center gap-1 text-[11px] bg-rose-50 text-rose-700 px-2 py-1 rounded self-start">
                                   <span className="font-semibold">Overdue:</span>
-                                  <span>{student.overdue_months.join(', ')}</span>
+                                  <span className="wrap-break-word">{student.overdue_months.join(', ')}</span>
                                 </div>
                               )}
                             </div>
@@ -836,7 +836,8 @@ export default function StudentsClient() {
                 {/* Pagination */}
                 {filteredStudents.length > 0 && totalPages > 1 && (
                   <div className="p-4 border-t border-slate-200">
-                    <Pagination>
+                    <div className="overflow-x-auto">
+                      <Pagination className="min-w-max mx-auto">
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
@@ -892,7 +893,8 @@ export default function StudentsClient() {
                           />
                         </PaginationItem>
                       </PaginationContent>
-                    </Pagination>
+                      </Pagination>
+                    </div>
                     <div className="text-center mt-2 text-sm text-slate-600">
                       Showing {startIndex + 1} to {Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} students
                     </div>
@@ -903,7 +905,7 @@ export default function StudentsClient() {
           </div>
 
           {/* Actions (Add/Delete class) */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
             {!selectedClass && localClasses.length > 1 && (
               <Button
                 onClick={() => {
@@ -911,7 +913,7 @@ export default function StudentsClient() {
                   setSelectedClassForSwap(null); // Reset selection when toggling mode
                 }}
                 variant={isDragMode ? "default" : "outline"}
-                className="whitespace-nowrap"
+                className="w-full sm:w-auto justify-center whitespace-nowrap"
               >
                 <GripVertical className="mr-2 w-4 h-4" />
                 {isDragMode ? 'Exit Reorder' : 'Reorder Classes'}
@@ -1023,8 +1025,8 @@ export default function StudentsClient() {
                   {/* Mobile Card View */}
                   <div className="block lg:hidden">
                     <div className="divide-y divide-slate-100">
-                      {inactiveStudents.map((student: Student) => (
-                        <div key={student.id} className="p-4 hover:bg-slate-50 bg-slate-50/50">
+                      {paginatedInactiveStudents.map((student: Student) => (
+                        <div key={student.id} className="p-3 sm:p-4 hover:bg-slate-50 bg-slate-50/50">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="font-medium text-slate-700 mb-1">{student.name}</div>
@@ -1124,7 +1126,8 @@ export default function StudentsClient() {
                   {/* Pagination for Inactive Students */}
                   {inactiveStudents.length > studentsPerPage && totalInactivePages > 1 && (
                     <div className="p-4 border-t border-slate-200">
-                      <Pagination>
+                      <div className="overflow-x-auto">
+                        <Pagination className="min-w-max mx-auto">
                         <PaginationContent>
                           <PaginationItem>
                             <PaginationPrevious
@@ -1179,7 +1182,8 @@ export default function StudentsClient() {
                             />
                           </PaginationItem>
                         </PaginationContent>
-                      </Pagination>
+                        </Pagination>
+                      </div>
                       <div className="text-center mt-2 text-sm text-slate-600">
                         Showing {startInactiveIndex + 1} to {Math.min(endInactiveIndex, inactiveStudents.length)} of {inactiveStudents.length} inactive students
                       </div>

@@ -55,10 +55,19 @@ export async function createRouteSupabaseClient(request?: NextRequest) {
 export async function getRequestOrgContext(request?: NextRequest) {
   const supabase = await createRouteSupabaseClient(request);
   const bearerToken = extractBearerToken(request);
-  const {
-    data: { user },
-    error: userError,
-  } = await (bearerToken ? supabase.auth.getUser(bearerToken) : supabase.auth.getUser());
+  
+  let user = null;
+  let userError = null;
+
+  try {
+    const authResult = await (bearerToken ? supabase.auth.getUser(bearerToken) : supabase.auth.getUser());
+    user = authResult.data.user;
+    userError = authResult.error;
+  } catch (error: any) {
+    console.error('Supabase auth.getUser() threw an exception:', error);
+    // Return early if there's a network error (like ECONNRESET)
+    return { supabase, user: null, organizationId: null as string | null };
+  }
 
   if (userError || !user) {
     return { supabase, user: null, organizationId: null as string | null };

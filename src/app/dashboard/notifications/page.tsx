@@ -918,11 +918,8 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex">
-                    <div className="flex-1 lg:ml-64">
-            
-            <main className="p-6">
+      <div className="min-h-full bg-gray-50">
+      <main className="p-6">
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
@@ -930,20 +927,13 @@ export default function NotificationsPage() {
                 </div>
               </div>
             </main>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-                
-        <div className="flex-1 lg:ml-64">
-          
-          
-          <main className="p-4 lg:p-6">
+    <div className="min-h-full bg-gray-50">
+      <main className="p-4 lg:p-6">
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -2948,8 +2938,6 @@ export default function NotificationsPage() {
               </div>
             )}
           </main>
-        </div>
-      </div>
     </div>
   );
 }

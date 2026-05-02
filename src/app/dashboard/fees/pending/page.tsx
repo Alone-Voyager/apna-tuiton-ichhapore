@@ -175,11 +175,7 @@ export default function PendingFeesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-            
-      <div className="flex-1 flex flex-col lg:ml-64">
-        
-        
+    <div className="min-h-full bg-slate-50">
         <main className="flex-1 overflow-y-auto">
           {/* Hero Section */}
           <div className="bg-gradient-to-br from-red-500 to-pink-600 text-white p-4 sm:p-6">
@@ -471,7 +467,6 @@ export default function PendingFeesPage() {
             )}
           </div>
         </main>
-      </div>
 
       {/* Payment Modal */}
       {showPaymentModal && selectedStudent && (
