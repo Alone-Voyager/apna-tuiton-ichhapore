@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "cap:build": "next build && npx cap copy",
+    "cap:build": "npx cap sync",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios"

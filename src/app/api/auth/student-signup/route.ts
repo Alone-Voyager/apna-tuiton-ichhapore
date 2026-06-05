@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
             .select('*', { count: 'exact', head: true })
             .eq('organization_id', organizationId);
 
-        const roll_number = `${new Date().getFullYear()}${((count || 0) + 1).toString().padStart(3, '0')}`;
+        const roll_number = `AT-${new Date().getFullYear()}-${((count || 0) + 1).toString().padStart(3, '0')}`;
 
         const { data: studentData, error: studentError } = await supabaseAdmin
             .from('students')
@@ -102,6 +102,19 @@ export async function POST(request: NextRequest) {
             await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
             return NextResponse.json({ error: profileError.message }, { status: 500 });
         }
+
+        // Create users table entry for login (same as admin-created students)
+        const bcrypt = require('bcryptjs');
+        const passwordHash = await bcrypt.hash(password, 10);
+        await supabaseAdmin.from('users').insert({
+            username: roll_number,
+            password_hash: passwordHash,
+            role: 'student',
+            status: 'pending_approval',
+        }).catch((err: any) => {
+            console.error('Failed to create users table entry for student signup:', err.message);
+            // Don't fail the request if this alone fails - student can still use email login
+        });
 
         return NextResponse.json(
             { success: true, message: 'Student account created and pending admin approval.' },

@@ -67,10 +67,26 @@ export async function signIn(email: string, password: string) {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    let data: any = null;
+    
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.error('[AUTH] Non-JSON login response:', text.slice(0, 200));
+      return { data: null, error: new Error('Server returned an invalid response. Please try again.') };
+    }
 
     if (!response.ok) {
-      return { data: null, error: new Error(data.error || 'Login failed') };
+      const statusCode = response.status;
+      let message = data.error || 'Login failed';
+      if (statusCode === 403 && message.includes('pending')) {
+        message = 'Your account is pending admin approval. Please try again later.';
+      } else if (statusCode === 403) {
+        message = 'Your account has been disabled. Please contact the administrator.';
+      }
+      return { data: null, error: new Error(message) };
     }
 
     // Force a reload of the browser client session since cookies were set by the server
@@ -78,7 +94,7 @@ export async function signIn(email: string, password: string) {
 
     return {
       data: {
-        session: true,
+        success: data.success === true,
         role: data.role,
         redirect: data.redirect || (data.role === 'student' ? '/student/dashboard' : '/dashboard'),
       },

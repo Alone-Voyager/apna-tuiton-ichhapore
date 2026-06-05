@@ -35,14 +35,12 @@ export default function DataManagementPage() {
                 <TabsTrigger value="student" className="text-xs sm:text-sm px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg whitespace-normal text-center h-auto min-h-[2.5rem]">
                   Student Data
                 </TabsTrigger>
-                {/* Payment History and Delete Data tabs commented out per request - not needed now
                 <TabsTrigger value="payment" className="text-xs sm:text-sm px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg whitespace-normal text-center h-auto min-h-[2.5rem]">
-                  Payment History
+                  Fee Export
                 </TabsTrigger>
                 <TabsTrigger value="delete" className="text-xs sm:text-sm px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg whitespace-normal text-center h-auto min-h-[2.5rem]">
                   Delete Data
                 </TabsTrigger>
-                */}
               </TabsList>
 
               <TabsContent value="import">
@@ -53,7 +51,6 @@ export default function DataManagementPage() {
                 <ExportDataTab type="student" />
               </TabsContent>
 
-              {/* Payment and Delete tab contents commented out per request - not needed now
               <TabsContent value="payment">
                 <ExportDataTab type="payment" />
               </TabsContent>
@@ -61,7 +58,6 @@ export default function DataManagementPage() {
               <TabsContent value="delete">
                 <DeleteDataTab />
               </TabsContent>
-              */}
             </Tabs>
       </main>
     </div>
