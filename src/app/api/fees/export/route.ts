@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       const csvRows = [headers.join(',')];
       for (const row of exportData) {
         const values = headers.map((h) => {
-          const val = String(row[h] ?? '');
+          const val = String((row as any)[h] ?? '');
           return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
         });
         csvRows.push(values.join(','));
