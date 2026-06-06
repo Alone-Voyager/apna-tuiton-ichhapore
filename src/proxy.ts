@@ -89,6 +89,32 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  if (session && pathname.startsWith('/dashboard')) {
+    const { data: studentProfile } = await supabase
+      .from('student_profiles')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (studentProfile) {
+      return NextResponse.redirect(new URL('/student/dashboard', request.url));
+    }
+  }
+
+  if (session && pathname.startsWith('/student')) {
+    const { data: adminProfile } = await supabase
+      .from('admin_profiles')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (adminProfile) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
   return response;
 }
 

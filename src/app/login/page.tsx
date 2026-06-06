@@ -22,18 +22,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const emailToUse = formData.email.trim();
-      const { data, error: authError } = await signIn(emailToUse, formData.password);
+      const loginInput = formData.email.trim();
+      const { data, error: authError } = await signIn(loginInput, formData.password);
 
       if (authError) {
-        setError(authError.message || 'Invalid email or password');
+        const msg = authError.message || 'Invalid login credentials';
+        setError(msg);
         setLoading(false);
         return;
       }
 
-      if (data?.session) {
+      if (data?.success) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        const redirect = (data as any)?.redirect ?? '/dashboard';
+        const redirect = data.redirect ?? '/dashboard';
         router.push(redirect);
       } else {
         setError('Login failed. Please try again.');
@@ -41,7 +42,7 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      setError('An unexpected error occurred. Please try again.');
       setLoading(false);
     }
   };
@@ -102,12 +103,15 @@ export default function LoginPage() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full bg-[#f1f3f5] border-0 text-[#1e293b] rounded-[24px] py-[18px] pl-14 pr-4 text-[15px] font-semibold placeholder-slate-500 focus:ring-2 focus:ring-[#1a2b53] transition-all"
-              placeholder="Username"
+              placeholder="Email or Student ID"
               autoComplete="username"
               autoCapitalize="none"
               autoCorrect="off"
             />
           </div>
+          <p className="text-[11px] text-slate-400 font-medium -mt-2 ml-4">
+            Use your Student ID (e.g. AT-2024-001) or admin email
+          </p>
 
           {/* Password Input */}
           <div className="relative">
