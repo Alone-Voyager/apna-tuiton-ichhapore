@@ -628,8 +628,6 @@ export default function AdminAssignmentsPage() {
                         </div>
 
                     </main>
-                </div>
-            </div>
 
             {/* CREATE MODAL */}
             {showCreate && (
