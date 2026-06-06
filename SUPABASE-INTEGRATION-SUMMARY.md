@@ -16,6 +16,8 @@
 
 ## ✅ What's Configured
 
+
+
 1. ✅ Supabase JS client package installed (`@supabase/supabase-js@2.58.0`)
 2. ✅ Environment variables connected from your `.env`
 3. ✅ Two Supabase clients created:
