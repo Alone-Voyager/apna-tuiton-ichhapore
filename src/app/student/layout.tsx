@@ -12,6 +12,7 @@ import {
     LogOut,
     User,
     BookOpen,
+    Settings,
     GraduationCap,
 } from 'lucide-react';
 import { signOut } from '../../lib/supabase/auth';
@@ -21,6 +22,7 @@ const navTabs = [
     { href: '/student/attendance', label: 'Attend',  icon: CalendarCheck },
     { href: '/student/dashboard',  label: 'Home',    icon: Home },
     { href: '/student/fees',       label: 'Fees',    icon: Wallet },
+    { href: '/student/profile/settings', label: 'Settings', icon: Settings },
     { href: '#more',               label: 'More',    icon: MoreHorizontal },
 ];
 
@@ -46,9 +48,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         }
     };
 
-    const activeTabIndex = moreOpen ? 4 : navTabs.findIndex(t => t.href !== '#more' && pathname === t.href);
+    const activeTabIndex = moreOpen ? navTabs.length - 1 : navTabs.findIndex(t => t.href !== '#more' && pathname === t.href);
     const currentIndex = activeTabIndex === -1 ? 2 : activeTabIndex;
     const ActiveIcon = navTabs[currentIndex]?.icon || Home;
+    const tabWidth = 100 / navTabs.length;
 
     if (!mounted) return <div className="bg-white h-screen w-full" />;
 
@@ -89,7 +92,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 {/* Mobile Nav (Identical approach to admin) */}
                 <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex flex-col justify-end">
                     <div className="relative w-full pointer-events-auto filter drop-shadow-[0_-4px_15px_rgba(0,0,0,0.06)] bg-white">
-                        <div className="relative w-full h-[3.5rem]" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)' }}>
+                        <div className="relative w-full h-14" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)' }}>
                             {/* SVG Notch */}
                             <svg className="absolute inset-0 w-full h-full text-white" fill="currentColor">
                                 <defs>
@@ -100,7 +103,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                             r="37" 
                                             fill="black" 
                                             className="transition-all duration-500"
-                                            style={{ cx: `${10 + currentIndex * 20}%` }}
+                                            style={{ cx: `${tabWidth / 2 + currentIndex * tabWidth}%` }}
                                         />
                                     </mask>
                                 </defs>
@@ -108,12 +111,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             </svg>
 
                             {/* Background filler for bottom */}
-                            <div className="absolute top-[3.5rem] inset-x-0 h-32 bg-white" />
+                            <div className="absolute top-14 inset-x-0 h-32 bg-white" />
 
                             {/* Sliding Active Bubble */}
                             <div 
-                                className="absolute top-0 w-[20%] h-[3.5rem] flex justify-center z-50 transition-transform duration-500"
-                                style={{ transform: `translateX(${currentIndex * 100}%)` }}
+                                className="absolute top-0 h-14 flex justify-center z-50 transition-transform duration-500"
+                                style={{ width: `${tabWidth}%`, transform: `translateX(${currentIndex * 100}%)` }}
                             >
                                 <div className="absolute -top-[1.7rem] w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-200">
                                     <ActiveIcon size={24} strokeWidth={2.5} />
@@ -121,7 +124,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             </div>
 
                             {/* Nav Items */}
-                            <div className="relative z-10 flex h-[3.5rem] w-full items-end pb-1">
+                            <div className="relative z-10 flex h-14 w-full items-end pb-1">
                                 {navTabs.map((tab, i) => (
                                     <button 
                                         key={tab.label}
@@ -156,6 +159,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             <Link href="/student/profile" onClick={() => setMoreOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors">
                                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center"><User /></div>
                                 <span className="font-bold text-slate-700">My Profile</span>
+                            </Link>
+                            <Link href="/student/profile/settings" onClick={() => setMoreOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors">
+                                <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center"><Settings /></div>
+                                <span className="font-bold text-slate-700">Settings</span>
                             </Link>
                             <button onClick={handleLogout} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-red-50 text-red-600 w-full transition-colors">
                                 <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center"><LogOut /></div>

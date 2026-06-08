@@ -1,6 +1,7 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
     User, Phone, MessageSquare, ChevronRight, CheckCircle2,
     AlertCircle, Clock, TrendingUp, Calendar, Activity, Eye
@@ -192,8 +193,11 @@ export default function StudentProfilePage() {
         return (
             <div className="sp-root md:max-w-md md:mx-auto">
                 <div className="sp-header">
-                    <h1 className="sp-header-title">Student Profile</h1>
-                </div>
+                                <h1 className="sp-header-title">Student Profile</h1>
+                                <div style={{ marginLeft: 'auto' }}>
+                                    <Link href="/student/profile/settings" className="sp-btn-history">Settings</Link>
+                                </div>
+                            </div>
                 <div className="sp-scroll-content">
                     <div className="sp-skeleton sp-skeleton-header" style={{marginTop: 0}} />
                     <div className="sp-skeleton sp-skeleton-stats" />
