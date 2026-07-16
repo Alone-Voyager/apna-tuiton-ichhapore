@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/auth/login
@@ -34,18 +35,23 @@ export async function POST(request: NextRequest) {
 
     const bcrypt = require('bcryptjs');
 
-    // Create a service role client to bypass RLS for Users table validation
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) { return request.cookies.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) { },
-          remove(name: string, options: CookieOptions) { },
-        }
-      }
-    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+      console.error('[AUTH:LOGIN] Supabase environment variables are not configured');
+      return NextResponse.json(
+        { error: 'Authentication service is not configured. Please contact the administrator.' },
+        { status: 503 }
+      );
+    }
+
+    // Service-role credentials must remain server-only and must never be placed in
+    // a NEXT_PUBLIC_* variable, which Next.js embeds in browser bundles.
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // 1. Validate credentials against the Custom Users table if it's a student ID
     if (isStudentId) {
@@ -129,8 +135,8 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true, role: 'admin' });
 
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           get(name: string) {
@@ -148,13 +154,29 @@ export async function POST(request: NextRequest) {
 
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Calling Supabase signInWithPassword with email="${loginEmail}"`);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password,
-    });
+    let data;
+    let error;
+    try {
+      ({ data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password,
+      }));
+    } catch (authError: any) {
+      console.error('[AUTH:LOGIN] Authentication provider request failed:', authError?.message);
+      return NextResponse.json(
+        { error: 'Authentication service is temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      );
+    }
 
     if (error) {
       console.error(`[AUTH:LOGIN] FAILED: Supabase signInWithPassword error: ${error.message} (code: ${error.status}, name: ${error.name})`);
+      if (typeof error.status === 'number' && error.status >= 500) {
+        return NextResponse.json(
+          { error: 'Authentication service is temporarily unavailable. Please try again shortly.' },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         { error: isStudentId ? 'Invalid username or password' : error.message },
         { status: 401 }
