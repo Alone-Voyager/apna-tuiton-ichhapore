@@ -19,7 +19,7 @@ Your `.env` file is already configured with your Supabase credentials:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://gvhguudtztutbxwolsxd.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ### 3. Set Up Database Schema
