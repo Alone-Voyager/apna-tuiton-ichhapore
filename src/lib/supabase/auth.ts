@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from './client';
+import { supabase } from './client';
 
 /**
  * Sign up a new admin user with organization via API
@@ -168,8 +168,9 @@ export async function updateAdminProfile(
     role?: 'super_admin' | 'admin' | 'staff';
   }
 ) {
-  // Use supabaseAdmin to bypass RLS for updates
-  const { data, error } = await supabaseAdmin
+  // Use the signed-in user's client so row-level security remains enforced.
+  // Service-role credentials must never be imported into this browser module.
+  const { data, error } = await supabase
     .from('admin_profiles')
     .update(updates)
     .eq('user_id', userId)
