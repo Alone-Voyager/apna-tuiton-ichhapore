@@ -43,7 +43,7 @@ export const supabase: any = new Proxy({}, {
 // environment variables are not present during build/analysis.
 function ensureServerEnv(): { url: string; key: string } {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error('@supabase/ssr: Your project URL and API key are required to create a Supabase admin client!');
   }
@@ -76,4 +76,3 @@ export const supabaseAdmin: any = new Proxy({}, {
     return true;
   }
 });
-
