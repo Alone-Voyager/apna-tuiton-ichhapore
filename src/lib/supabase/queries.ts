@@ -1,6 +1,5 @@
 import { supabase } from './client';
 import type { Database } from './types';
-import { syncStudentFeePayments } from '../fees-service';
 
 type Student = Database['public']['Tables']['students']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
@@ -46,11 +45,11 @@ export async function getStudentById(id: string) {
 }
 
 export async function getStudentDetailsWithFees(id: string) {
-  // Sync fee payments first using client-side supabase client
+  // Sync fee payments first via server-side sync endpoint (with admin privileges)
   try {
-    await syncStudentFeePayments(supabase, id);
+    await fetch(`/api/students/${id}/sync-fees`, { method: 'POST' });
   } catch (err) {
-    console.error('Error syncing student fee payments:', err);
+    console.error('Error triggering student fee sync:', err);
   }
 
   // Fetch student data
