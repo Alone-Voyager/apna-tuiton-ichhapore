@@ -123,9 +123,9 @@ export default function StudentDashboard() {
                     <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100/80 hover:bg-slate-50 transition-colors">
                         <Bell className="w-[14px] h-[14px] text-[#64748B] stroke-[2]" />
                     </button>
-                    <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100/80 hover:bg-slate-50 transition-colors">
+                    <Link href="/student/profile/settings" className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100/80 hover:bg-slate-50 transition-colors">
                         <Settings className="w-[14px] h-[14px] text-[#64748B] stroke-[2]" />
-                    </button>
+                    </Link>
                 </div>
             </div>
 

@@ -69,12 +69,12 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching leave count:', leaveError);
     }
 
-    // 4. Get total outstanding amount (Overdue only)
+    // 4. Get total outstanding amount (Unpaid, Pending, Overdue, Partial)
     const { data: outstandingPayments, error: outstandingError } = await supabase
       .from('fee_payments')
       .select('amount, paid_amount')
       .eq('organization_id', organizationId)
-      .eq('status', 'Overdue');
+      .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial']);
 
     if (outstandingError) {
       console.error('Error fetching outstanding payments:', outstandingError);

@@ -19,19 +19,26 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Default email if none provided (since auth needs it) - we can generate a fake one or require email
-        // Let's require email for auth, or generate one if optional is allowed.
-        // The user says "Email (Optional)", but Supabase Auth requires email or phone. 
-        // If we use email for login, we need it. Let's use it, or generate a dummy one.
-        const userEmail = email ? email : `${studentMobile}@student.example.com`;
+        // 1. To match auto-generated roll numbers, we fetch the current count first
+        const { count } = await supabaseAdmin
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organizationId);
 
-        // Create auth user using Admin API
+        const roll_number = `AT-${new Date().getFullYear()}-${((count || 0) + 1).toString().padStart(3, '0')}`;
+
+        // 2. Define the login-bound dummy email based on the generated Student ID
+        const studentEmail = `${roll_number.toLowerCase()}@apnatuition.local`;
+
+        // 3. Create auth user in Supabase Auth using Admin API
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: userEmail,
+            email: studentEmail,
             email_confirm: true,
             password,
             user_metadata: {
-                full_name: fullName,
+                role: 'student',
+                username: roll_number,
+                name: fullName,
             },
         });
 
@@ -49,15 +56,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Insert into students table (status = pending_approval)
-        // To match auto-generated roll numbers, we can fetch the count 1st
-        const { count } = await supabaseAdmin
-            .from('students')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organizationId);
-
-        const roll_number = `AT-${new Date().getFullYear()}-${((count || 0) + 1).toString().padStart(3, '0')}`;
-
+        // 4. Insert into students table (status = pending_approval)
         const { data: studentData, error: studentError } = await supabaseAdmin
             .from('students')
             .insert({
@@ -71,7 +70,7 @@ export async function POST(request: NextRequest) {
                 parent_name: 'Parent of ' + fullName, // Default parent name, maybe omitted if not asked
                 phone: studentMobile,
                 whatsapp: parentMobile, // Often used for parents
-                email: email || null,
+                email: email || null, // Store actual email here
                 monthly_fee: 0, // Admin updates this
                 school_name: schoolName || null,
                 subjects_enrolled: subjectsEnrolled,
@@ -83,27 +82,29 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (studentError) {
-            // Rollback
+            // Rollback Auth user
             await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
             return NextResponse.json({ error: studentError.message }, { status: 500 });
         }
 
-        // Insert into student_profiles
+        // 5. Insert into student_profiles with the email column
         const { error: profileError } = await supabaseAdmin
             .from('student_profiles')
             .insert({
                 user_id: authData.user.id,
                 student_id: studentData.id,
-                organization_id: organizationId
+                organization_id: organizationId,
+                email: studentEmail
             });
 
         if (profileError) {
+            // Rollback student and Auth user
             await supabaseAdmin.from('students').delete().eq('id', studentData.id);
             await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
             return NextResponse.json({ error: profileError.message }, { status: 500 });
         }
 
-        // Create users table entry for login (same as admin-created students)
+        // 6. Create users table entry for login (same as admin-created students)
         const bcrypt = require('bcryptjs');
         const passwordHash = await bcrypt.hash(password, 10);
         await supabaseAdmin.from('users').insert({

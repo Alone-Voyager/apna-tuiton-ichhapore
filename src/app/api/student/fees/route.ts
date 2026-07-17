@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
         // Summary
         const totalPaid = fees?.filter((f: any) => f.status?.toLowerCase() === 'paid').reduce((s: number, f: any) => s + (Number(f.paid_amount) || Number(f.amount) || 0), 0) ?? 0;
-        const totalPending = fees?.filter((f: any) => ['pending', 'partial'].includes(f.status?.toLowerCase())).reduce((s: number, f: any) => s + (Number(f.amount) || 0) - (Number(f.paid_amount) || 0), 0) ?? 0;
+        const totalPending = fees?.filter((f: any) => ['pending', 'partial', 'unpaid'].includes(f.status?.toLowerCase())).reduce((s: number, f: any) => s + (Number(f.amount) || 0) - (Number(f.paid_amount) || 0), 0) ?? 0;
         const totalOverdue = fees?.filter((f: any) => f.status?.toLowerCase() === 'overdue').reduce((s: number, f: any) => s + (Number(f.amount) || 0) - (Number(f.paid_amount) || 0), 0) ?? 0;
 
         return NextResponse.json({

@@ -56,12 +56,12 @@ export async function getStudentDetailsWithFees(id: string) {
     return { data: null, error: studentError };
   }
 
-  // Fetch overdue fee payments (pending months) from fee_payments table
+  // Fetch pending/overdue fee payments (pending months) from fee_payments table
   const { data: overduePayments, error: overdueError } = await supabase
     .from('fee_payments')
     .select('*')
     .eq('student_id', id)
-    .eq('status', 'Overdue')
+    .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
     .order('due_date', { ascending: true });
 
   if (overdueError) {
@@ -86,7 +86,7 @@ export async function getStudentDetailsWithFees(id: string) {
 
   const pendingPayments = overduePayments || [];
   const totalPendingMonths = pendingPayments.length;
-  const pendingAmount = pendingPayments.reduce((sum: number, p: { amount: any; }) => sum + Number(p.amount || 0), 0);
+  const pendingAmount = pendingPayments.reduce((sum: number, p: { amount: any; paid_amount?: any; }) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
   const pendingMonths = pendingPayments.map((p: { payment_month: any; }) => p.payment_month);
 
   return {
