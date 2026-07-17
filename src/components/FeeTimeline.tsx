@@ -92,21 +92,34 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
             .map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []
         )
 
-        // Generate timeline
+        // Generate timeline using billing-cycle logic:
+        // i-th billing cycle completes on completionDate = admission + i months.
+        // The MONTH that becomes due is the one before that: admission + (i-1) months.
         const timeline: FeeRecord[] = []
         let i = 1
 
         while (true) {
+          // The date on which the i-th billing cycle completes (trigger date)
           const completionDate = addMonths(admission, i)
-          const compMonth = completionDate.getMonth()
-          const compYear = completionDate.getFullYear()
+          const completionYear = completionDate.getFullYear()
+          const completionMonthIdx = completionDate.getMonth()
 
-          // Stop if the completion month is past the end of the current academic year (April of endYear)
-          if (compYear > endYear || (compYear === endYear && compMonth > 3)) {
+          // The month that becomes due when completionDate arrives
+          const dueMonthDate = addMonths(admission, i - 1)
+          const dueMonth = dueMonthDate.getMonth()
+          const dueYear = dueMonthDate.getFullYear()
+
+          // Stop if the due month is past the end of the current academic year (April of endYear)
+          if (dueYear > endYear || (dueYear === endYear && dueMonth > 3)) {
             break
           }
 
-          const monthDisplayKey = `${getMonthName(compMonth)} ${compYear}`
+          // Also stop if completionDate is more than 1 year in the future (safety)
+          if (completionYear > endYear + 1) {
+            break
+          }
+
+          const monthDisplayKey = `${getMonthName(dueMonth)} ${dueYear}`
           const monthLookupKey = monthDisplayKey.toLowerCase()
 
           let status: 'pending' | 'paid' | 'upcoming' = 'upcoming'
@@ -119,18 +132,18 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (pendingFeeMonths.has(monthLookupKey)) {
             status = 'pending'
           }
-          // Priority 3: If the month has already completed relative to today, default to pending
+          // Priority 3: The billing cycle has completed → month is due/pending
           else if (currentDate >= completionDate) {
             status = 'pending'
           }
-          // Priority 4: Otherwise, it's upcoming
+          // Priority 4: Billing cycle not yet complete → upcoming
           else {
             status = 'upcoming'
           }
 
           timeline.push({
             month: monthDisplayKey,
-            year: compYear,
+            year: dueYear,
             status,
             amount: monthlyFee
           })

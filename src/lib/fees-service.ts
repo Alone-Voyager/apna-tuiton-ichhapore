@@ -21,7 +21,21 @@ export function addMonths(date: Date, months: number): Date {
 
 /**
  * Calculates completed billing months for a student starting from their admission date.
- * A month is only completed after one full month has passed from the admission date.
+ *
+ * Business Rule:
+ *   A month becomes due when one full billing cycle has elapsed from the admission date.
+ *   The admission month itself is the FIRST month to become due, and it becomes due
+ *   only when the same date arrives in the NEXT calendar month.
+ *
+ *   Example: Admission = 15 May
+ *     - Before 15 June  → nothing is due
+ *     - On 15 June      → May becomes due   (completionDate = June 15, dueName = May)
+ *     - On 15 July      → June becomes due  (completionDate = July 15, dueName = June)
+ *     - On 15 August    → July becomes due  (completionDate = Aug 15,  dueName = July)
+ *
+ *   Each iteration i:
+ *     completionDate = admissionDate + i months  (trigger: when this date passes, a new month is due)
+ *     monthName      = admissionDate + (i-1) months  (the month that just became due)
  */
 export function getCompletedBillingMonths(admissionDateStr: string, currentDate: Date = new Date()): { monthName: string; dueDate: string }[] {
   const admissionDate = new Date(admissionDateStr);
@@ -31,27 +45,30 @@ export function getCompletedBillingMonths(admissionDateStr: string, currentDate:
   today.setHours(0, 0, 0, 0);
 
   const completedMonths: { monthName: string; dueDate: string }[] = [];
-  
+
   let i = 1;
   while (true) {
+    // The date on which the i-th billing cycle completes
     const completionDate = addMonths(admissionDate, i);
     completionDate.setHours(0, 0, 0, 0);
 
-    // Only include months that have completed up to today (completionDate <= today)
+    // Only include cycles that have completed on or before today
     if (completionDate > today) {
       break;
     }
 
-    const monthName = completionDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    // The month that became due is the one BEFORE the completion date:
+    // admissionDate + (i-1) months = the (i-1)th month after admission.
+    // For i=1 this is the admission month itself.
+    const dueMonthDate = addMonths(admissionDate, i - 1);
+    const monthName = dueMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    // Use the completion date as the due date (when the fee became payable)
     const dueDateStr = completionDate.toISOString().split('T')[0];
 
-    completedMonths.push({
-      monthName,
-      dueDate: dueDateStr
-    });
+    completedMonths.push({ monthName, dueDate: dueDateStr });
 
     i++;
-    if (i > 1200) break; // safety break to prevent infinite loop (100 years limit)
+    if (i > 1200) break; // safety: 100-year guard
   }
 
   return completedMonths;
