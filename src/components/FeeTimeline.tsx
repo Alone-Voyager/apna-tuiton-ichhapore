@@ -111,7 +111,11 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (pendingFeeMonths.has(monthLookupKey)) {
             status = 'pending'
           }
-          // Priority 3: If not in either table, it's upcoming
+          // Priority 3: If the month has already started/passed (based on today's date), default to pending
+          else if (currentDate >= new Date(year, month, 1)) {
+            status = 'pending'
+          }
+          // Priority 4: Otherwise, it's upcoming
           else {
             status = 'upcoming'
           }

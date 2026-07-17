@@ -349,38 +349,51 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
-    // Create initial fee payment entry for the admission month
+    // Create fee payment entries from the admission month up to the current month
     const admissionDateObj = new Date(admission_date);
-    const paymentMonth = admissionDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const currentDate = new Date();
+    
+    // Normalize dates to start of the months for proper comparison loop
+    let loopDate = new Date(admissionDateObj.getFullYear(), admissionDateObj.getMonth(), 1);
+    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-    // Set due date to end of admission month
-    const dueDate = new Date(admissionDateObj.getFullYear(), admissionDateObj.getMonth() + 1, 0);
+    const feeEntries = [];
 
-    // Generate a unique receipt number (only include timestamp, no random part for initial entry)
-    const receiptNumber = `FEE-PENDING-${Date.now()}`;
+    while (loopDate <= endDate) {
+      const paymentMonth = loopDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const dueDate = new Date(loopDate.getFullYear(), loopDate.getMonth() + 1, 0);
+      const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-    const { error: feePaymentError } = await supabase
-      .from('fee_payments')
-      .insert({
+      feeEntries.push({
         student_id: newStudent.id,
         organization_id: organizationId,
         amount: Number(monthly_fee),
         payment_month: paymentMonth,
         payment_date: admission_date,
         due_date: dueDate.toISOString().split('T')[0],
-        status: 'Unpaid', // Initial status - will become 'Pending' after month ends
+        status: 'Unpaid', // Initial status - will become 'Pending' / 'Overdue' based on cron/dates
         paid_amount: 0.00,
         discount: 0.00,
         late_fee: 0.00,
         receipt_number: receiptNumber,
-        collected_by: null, // No collector yet
+        collected_by: null,
         notes: 'Fee entry created on admission - Payment pending for ' + paymentMonth
       });
 
-    if (feePaymentError) {
-      console.error('Error creating fee payment entry:', feePaymentError);
-      // Don't fail the request if fee payment creation fails
-      // The student is already created, so we log the error but continue
+      // Move to next month
+      loopDate.setMonth(loopDate.getMonth() + 1);
+    }
+
+    if (feeEntries.length > 0) {
+      const { error: feePaymentError } = await supabase
+        .from('fee_payments')
+        .insert(feeEntries);
+
+      if (feePaymentError) {
+        console.error('Error creating fee payment entries:', feePaymentError);
+        // Don't fail the request if fee payment creation fails
+        // The student is already created, so we log the error but continue
+      }
     }
 
     // Log activity
