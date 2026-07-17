@@ -161,14 +161,20 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
       }
     }
 
-    // 5. Clean up any unpaid records in fee_payments that are NOT valid completed billing months
-    const unpaidToDelete = existingPayments.filter((p: any) => {
+    // 5. Clean up any fee_payments records whose month name is NOT in the valid
+    //    completed billing months list. This catches both wrong-named records from
+    //    the old logic and records for months that are no longer due (e.g. admission
+    //    date moved forward). Only skip if the record is in fee_payment_history (paid).
+    const toDelete = existingPayments.filter((p: any) => {
       const monthLower = p.payment_month.toLowerCase();
-      return p.status === 'Unpaid' && !completedBillingMonthsNames.includes(monthLower);
+      // Keep it if it is already tracked as paid in history
+      if (paidMonthsNames.has(monthLower)) return false;
+      // Delete it if it is not a valid due month according to the current billing logic
+      return !completedBillingMonthsNames.includes(monthLower);
     });
 
-    if (unpaidToDelete.length > 0) {
-      const idsToDelete = unpaidToDelete.map((p: any) => p.id);
+    if (toDelete.length > 0) {
+      const idsToDelete = toDelete.map((p: any) => p.id);
       const { error: deleteError } = await supabase
         .from('fee_payments')
         .delete()
