@@ -82,9 +82,9 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
         // Create lookup maps
         const paidMonths = new Set(paymentHistory?.map((p: { payment_month: any }) => p.payment_month) || [])
-        const overdueMonths = new Set(
+        const pendingFeeMonths = new Set(
           feePayments
-            ?.filter((p: { status: string }) => p.status === 'Overdue')
+            ?.filter((p: { status: string }) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status))
             .map((p: { payment_month: any }) => p.payment_month) || []
         )
 
@@ -103,8 +103,8 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           if (paidMonths.has(monthKey)) {
             status = 'paid'
           }
-          // Priority 2: Check if overdue in fee_payments
-          else if (overdueMonths.has(monthKey)) {
+          // Priority 2: Check if pending/overdue in fee_payments
+          else if (pendingFeeMonths.has(monthKey)) {
             status = 'pending'
           }
           // Priority 3: If not in either table, it's upcoming
