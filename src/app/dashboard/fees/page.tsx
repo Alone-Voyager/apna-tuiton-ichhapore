@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react';
 import { Users2, CheckCircle, Clock, AlertTriangle, PieChart, ArrowRight, ArrowLeft, DollarSign, X, Check, Loader2, Search } from 'lucide-react';
+import RevenueAnalytics from '../../../components/RevenueAnalytics';
 import {
   Pagination,
   PaginationContent,
@@ -83,6 +84,8 @@ export default function FeesPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [monthsGenerated, setMonthsGenerated] = useState<Set<string>>(new Set());
+  const [activeSubView, setActiveSubView] = useState<'overview' | 'analytics'>('overview');
+  const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(0);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -229,6 +232,7 @@ export default function FeesPage() {
 
       // Refresh data after payment
       fetchFeeStats();
+      setAnalyticsRefreshTrigger(prev => prev + 1);
     } catch (err: any) {
       console.error('Error collecting payment:', err);
       alert(err.message || 'Failed to collect payment');
@@ -392,8 +396,40 @@ export default function FeesPage() {
           </div> */}
 
 
-          {/* Stats Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+          {/* Sub View Toggle Tabs */}
+          <div className="flex border border-slate-200 mb-6 bg-slate-100/50 p-1 rounded-xl shadow-inner max-w-md">
+            <button
+              onClick={() => {
+                setActiveSubView('overview');
+                fetchFeeStats();
+              }}
+              className={`flex-1 py-2.5 px-4 text-center rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer ${
+                activeSubView === 'overview'
+                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/50 scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Fees List Overview
+            </button>
+            <button
+              onClick={() => {
+                setActiveSubView('analytics');
+                setAnalyticsRefreshTrigger(prev => prev + 1);
+              }}
+              className={`flex-1 py-2.5 px-4 text-center rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer ${
+                activeSubView === 'analytics'
+                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/50 scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Monthly Revenue Analytics
+            </button>
+          </div>
+
+          {activeSubView === 'overview' ? (
+            <>
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
               <div className="flex items-center justify-between relative z-10">
                 <div>
@@ -893,6 +929,10 @@ export default function FeesPage() {
                 )}
               </div>
             </>
+          )}
+          </>
+          ) : (
+            <RevenueAnalytics refreshTrigger={analyticsRefreshTrigger} />
           )}
         </main>
 
