@@ -80,12 +80,15 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           .select('payment_month, status')
           .eq('student_id', studentId)
 
-        // Create lookup maps
-        const paidMonths = new Set(paymentHistory?.map((p: { payment_month: any }) => p.payment_month) || [])
+        // Create lookup maps (using lowercase keys for case-insensitive lookup)
+        const paidMonths = new Set([
+          ...(paymentHistory?.map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []),
+          ...(feePayments?.filter((p: { status: string }) => p.status === 'Paid').map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || [])
+        ])
         const pendingFeeMonths = new Set(
           feePayments
             ?.filter((p: { status: string }) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status))
-            .map((p: { payment_month: any }) => p.payment_month) || []
+            .map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []
         )
 
         // Generate timeline
@@ -95,16 +98,17 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
         // Loop until April of the end year
         while (year < endYear || (year === endYear && month <= 3)) {
-          const monthKey = `${getMonthName(month)} ${year}`
+          const monthDisplayKey = `${getMonthName(month)} ${year}`
+          const monthLookupKey = monthDisplayKey.toLowerCase()
           
           let status: 'pending' | 'paid' | 'upcoming' = 'upcoming'
 
           // Priority 1: Check payment history first (paid)
-          if (paidMonths.has(monthKey)) {
+          if (paidMonths.has(monthLookupKey)) {
             status = 'paid'
           }
           // Priority 2: Check if pending/overdue in fee_payments
-          else if (pendingFeeMonths.has(monthKey)) {
+          else if (pendingFeeMonths.has(monthLookupKey)) {
             status = 'pending'
           }
           // Priority 3: If not in either table, it's upcoming
@@ -113,7 +117,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           }
 
           timeline.push({
-            month: monthKey,
+            month: monthDisplayKey,
             year,
             status,
             amount: monthlyFee
