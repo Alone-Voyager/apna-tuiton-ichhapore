@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteSupabaseClient, getRequestOrgContext } from '../../../lib/supabase/server';
 import { supabaseAdmin } from '../../../lib/supabase/client';
 import { sendAdmissionWelcome } from '../../../lib/admission-notification-service';
+import { syncStudentFeePayments } from '../../../lib/fees-service';
 
 // GET /api/students - Fetch students for the organization
 export async function GET(request: NextRequest) {
@@ -349,52 +350,8 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
-    // Create fee payment entries from the admission month up to the current month
-    const admissionDateObj = new Date(admission_date);
-    const currentDate = new Date();
-    
-    // Normalize dates to start of the months for proper comparison loop
-    let loopDate = new Date(admissionDateObj.getFullYear(), admissionDateObj.getMonth(), 1);
-    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-
-    const feeEntries = [];
-
-    while (loopDate <= endDate) {
-      const paymentMonth = loopDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-      const dueDate = new Date(loopDate.getFullYear(), loopDate.getMonth() + 1, 0);
-      const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-
-      feeEntries.push({
-        student_id: newStudent.id,
-        organization_id: organizationId,
-        amount: Number(monthly_fee),
-        payment_month: paymentMonth,
-        payment_date: admission_date,
-        due_date: dueDate.toISOString().split('T')[0],
-        status: 'Unpaid', // Initial status - will become 'Pending' / 'Overdue' based on cron/dates
-        paid_amount: 0.00,
-        discount: 0.00,
-        late_fee: 0.00,
-        receipt_number: receiptNumber,
-        collected_by: null,
-        notes: 'Fee entry created on admission - Payment pending for ' + paymentMonth
-      });
-
-      // Move to next month
-      loopDate.setMonth(loopDate.getMonth() + 1);
-    }
-
-    if (feeEntries.length > 0) {
-      const { error: feePaymentError } = await supabase
-        .from('fee_payments')
-        .insert(feeEntries);
-
-      if (feePaymentError) {
-        console.error('Error creating fee payment entries:', feePaymentError);
-        // Don't fail the request if fee payment creation fails
-        // The student is already created, so we log the error but continue
-      }
-    }
+    // Sync fee payments starting from the custom admission date up to the current month using calendar logic
+    await syncStudentFeePayments(supabase, newStudent.id);
 
     // Log activity
     const activityDescription = class_id

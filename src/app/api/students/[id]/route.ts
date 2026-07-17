@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 import bcrypt from 'bcryptjs';
+import { syncStudentFeePayments } from '../../../../lib/fees-service';
 
 // DELETE /api/students/[id] - Delete a student (soft delete by default, hard delete optional)
 export async function DELETE(
@@ -363,85 +364,8 @@ export async function PATCH(
       );
     }
 
-    // Generate missing fee payments from new admission date to current month
-    if (updatedStudent.admission_date) {
-      try {
-        const studentAdmissionDate = new Date(updatedStudent.admission_date);
-        const currentDate = new Date();
-        
-        let loopDate = new Date(studentAdmissionDate.getFullYear(), studentAdmissionDate.getMonth(), 1);
-        const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-
-        // Fetch existing fee payments and history for this student
-        const [existingPaymentsRes, existingHistoryRes] = await Promise.all([
-          supabase.from('fee_payments').select('payment_month').eq('student_id', studentId),
-          supabase.from('fee_payment_history').select('payment_month').eq('student_id', studentId)
-        ]);
-
-        const existingMonths = new Set([
-          ...(existingPaymentsRes.data?.map(p => p.payment_month.toLowerCase()) || []),
-          ...(existingHistoryRes.data?.map(p => p.payment_month.toLowerCase()) || [])
-        ]);
-
-        const newFeeEntries = [];
-
-        while (loopDate <= endDate) {
-          const paymentMonthStr = loopDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-          if (!existingMonths.has(paymentMonthStr.toLowerCase())) {
-            const dueDate = new Date(loopDate.getFullYear(), loopDate.getMonth() + 1, 0);
-            const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-
-            newFeeEntries.push({
-              student_id: studentId,
-              organization_id: organizationId,
-              amount: Number(updatedStudent.monthly_fee),
-              payment_month: paymentMonthStr,
-              payment_date: updatedStudent.admission_date,
-              due_date: dueDate.toISOString().split('T')[0],
-              status: 'Unpaid',
-              paid_amount: 0.00,
-              discount: 0.00,
-              late_fee: 0.00,
-              receipt_number: receiptNumber,
-              collected_by: null,
-              notes: 'Fee entry created on admission update - Payment pending for ' + paymentMonthStr
-            });
-          }
-          loopDate.setMonth(loopDate.getMonth() + 1);
-        }
-
-        if (newFeeEntries.length > 0) {
-          const { error: insertFeeError } = await supabase
-            .from('fee_payments')
-            .insert(newFeeEntries);
-          if (insertFeeError) {
-            console.error('Error inserting missing fee entries:', insertFeeError);
-          }
-        }
-
-        // Clean up unpaid fee payments that are before the new admission date
-        const { data: unpaidPayments } = await supabase
-          .from('fee_payments')
-          .select('id, payment_month')
-          .eq('student_id', studentId)
-          .eq('status', 'Unpaid');
-
-        if (unpaidPayments && unpaidPayments.length > 0) {
-          const idsToDelete = unpaidPayments
-            .filter(p => {
-              const paymentMonthDate = new Date(p.payment_month + ' 1');
-              return paymentMonthDate < new Date(studentAdmissionDate.getFullYear(), studentAdmissionDate.getMonth(), 1);
-            })
-            .map(p => p.id);
-
-          if (idsToDelete.length > 0) {
-            await supabase.from('fee_payments').delete().in('id', idsToDelete);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to generate missing fee payments on patch:', err);
-      }
-    }
+    // Sync fee payments based on the new admission date using calendar logic
+    await syncStudentFeePayments(supabase, studentId);
 
     // Handle credentials update if password or roll_number (username) changed
     if (updatedStudent.user_id && (student_password || roll_number)) {

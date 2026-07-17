@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { supabase } from '../lib/supabase/client'
+import { addMonths } from '../lib/fees-service'
 
 interface FeeRecord {
   month: string
@@ -93,14 +94,21 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
         // Generate timeline
         const timeline: FeeRecord[] = []
-        let year = admissionYear
-        let month = admissionMonth
+        let i = 1
 
-        // Loop until April of the end year
-        while (year < endYear || (year === endYear && month <= 3)) {
-          const monthDisplayKey = `${getMonthName(month)} ${year}`
+        while (true) {
+          const completionDate = addMonths(admission, i)
+          const compMonth = completionDate.getMonth()
+          const compYear = completionDate.getFullYear()
+
+          // Stop if the completion month is past the end of the current academic year (April of endYear)
+          if (compYear > endYear || (compYear === endYear && compMonth > 3)) {
+            break
+          }
+
+          const monthDisplayKey = `${getMonthName(compMonth)} ${compYear}`
           const monthLookupKey = monthDisplayKey.toLowerCase()
-          
+
           let status: 'pending' | 'paid' | 'upcoming' = 'upcoming'
 
           // Priority 1: Check payment history first (paid)
@@ -111,8 +119,8 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (pendingFeeMonths.has(monthLookupKey)) {
             status = 'pending'
           }
-          // Priority 3: If the month has already started/passed (based on today's date), default to pending
-          else if (currentDate >= new Date(year, month, 1)) {
+          // Priority 3: If the month has already completed relative to today, default to pending
+          else if (currentDate >= completionDate) {
             status = 'pending'
           }
           // Priority 4: Otherwise, it's upcoming
@@ -122,17 +130,13 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
           timeline.push({
             month: monthDisplayKey,
-            year,
+            year: compYear,
             status,
             amount: monthlyFee
           })
 
-          // Move to next month
-          month++
-          if (month > 11) {
-            month = 0
-            year++
-          }
+          i++
+          if (i > 100) break // safety break
         }
 
         // Add "Left" card if student is inactive/suspended
@@ -150,7 +154,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           if (lastPendingIndex !== -1) {
             timeline.splice(lastPendingIndex + 1, 0, {
               month: 'Left',
-              year: timeline[lastPendingIndex]?.year || year,
+              year: timeline[lastPendingIndex]?.year || admissionYear,
               status: 'left',
             })
           }
@@ -158,7 +162,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (lastPaidIndex !== -1 && firstUpcomingIndex !== -1) {
             timeline.splice(lastPaidIndex + 1, 0, {
               month: 'Left',
-              year: timeline[lastPaidIndex]?.year || year,
+              year: timeline[lastPaidIndex]?.year || admissionYear,
               status: 'left',
             })
           }
@@ -166,7 +170,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (firstUpcomingIndex !== -1) {
             timeline[firstUpcomingIndex] = {
               month: 'Left',
-              year: timeline[firstUpcomingIndex]?.year || year,
+              year: timeline[firstUpcomingIndex]?.year || admissionYear,
               status: 'left',
             }
           }

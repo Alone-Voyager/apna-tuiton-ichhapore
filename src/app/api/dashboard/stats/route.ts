@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestOrgContext } from '../../../../lib/supabase/server';
+import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,6 +69,9 @@ export async function GET(request: NextRequest) {
     if (leaveError) {
       console.error('Error fetching leave count:', leaveError);
     }
+
+    // Sync all active student fee payments first
+    await syncAllStudentFeePayments(supabase, organizationId);
 
     // 4. Get total outstanding amount (Unpaid, Pending, Overdue, Partial)
     const { data: outstandingPayments, error: outstandingError } = await supabase

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { syncStudentFeePayments } from '../../../../lib/fees-service';
 
 /**
  * GET /api/student/fees
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest) {
         if (!studentId) {
             return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
         }
+
+        // Sync student's fee payments using calendar logic first
+        await syncStudentFeePayments(supabaseAdmin, studentId);
 
         const { data: fees, error } = await supabaseAdmin
             .from('fee_payments')
