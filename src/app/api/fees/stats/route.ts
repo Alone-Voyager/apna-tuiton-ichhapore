@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { supabaseAdmin } from '../../../../lib/supabase/client';
+import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
 
 // GET /api/fees/stats - Fetch fee payment statistics
 export async function GET(request: NextRequest) {
@@ -73,6 +75,9 @@ export async function GET(request: NextRequest) {
 
     console.log('Filtering by month:', filterMonth);
     console.log('Using date for status calculation:', today.toDateString());
+
+    // Sync all active student fee payments up to today using the calendar logic
+    await syncAllStudentFeePayments(supabaseAdmin, userData.organization_id, today);
 
     // CRITICAL: Update all Unpaid entries from previous months to Overdue BEFORE fetching
     // This ensures the database status is current before we query
