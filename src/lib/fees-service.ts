@@ -306,13 +306,15 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId: s
         });
       }
 
-      // Identify unpaid records in fee_payments that are NOT valid completed billing months
-      const unpaidToDelete = studentUnpaidPayments.filter(p => {
+      // Identify records in fee_payments that are NOT valid completed billing months
+      // Only keep it if it is already tracked as paid in history
+      const toDelete = studentUnpaidPayments.filter(p => {
         const monthLower = p.payment_month.toLowerCase();
-        return p.status === 'Unpaid' && !completedBillingMonthsNames.includes(monthLower);
+        if (studentPaidMonths.has(monthLower)) return false;
+        return !completedBillingMonthsNames.includes(monthLower);
       });
 
-      for (const p of unpaidToDelete) {
+      for (const p of toDelete) {
         idsToDelete.push(p.id);
       }
     }

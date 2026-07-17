@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import type { Database } from './types';
+import { syncStudentFeePayments } from '../fees-service';
 
 type Student = Database['public']['Tables']['students']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
@@ -45,6 +46,13 @@ export async function getStudentById(id: string) {
 }
 
 export async function getStudentDetailsWithFees(id: string) {
+  // Sync fee payments first using client-side supabase client
+  try {
+    await syncStudentFeePayments(supabase, id);
+  } catch (err) {
+    console.error('Error syncing student fee payments:', err);
+  }
+
   // Fetch student data
   const { data: student, error: studentError } = await supabase
     .from('students')
