@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
-import { User, ChevronDown, Users, FileText, Save, Loader2, AlertCircle } from 'lucide-react';
+import { User, ChevronDown, Users, FileText, Save, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface Class {
   id: string;
@@ -34,6 +34,14 @@ export default function NewAdmission() {
   });
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/admissions');
+    }
+  };
 
   // Fetch classes on component mount
   useEffect(() => {
@@ -165,6 +173,12 @@ export default function NewAdmission() {
   return (
     <div className="min-h-full bg-white">
           <main className="p-4 lg:p-6">
+            <div className="mb-4">
+              <Button variant="ghost" size="sm" onClick={handleBack} className="gap-2 text-slate-600 hover:text-slate-900">
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+            </div>
             {/* Hero Section */}
             <div className="bg-gradient-to-r from-blue-900 to-red-600 rounded-2xl p-4 lg:p-6 text-white mb-6">
               <h1 className="text-2xl lg:text-3xl font-bold mb-2">New Student Admission</h1>
@@ -426,7 +440,7 @@ export default function NewAdmission() {
                 <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => router.push('/dashboard/students')}
+                    onClick={handleBack}
                     disabled={submitting}
                     className="w-full sm:w-auto px-6 py-2 text-slate-600 hover:text-slate-800 font-medium cursor-pointer whitespace-nowrap disabled:opacity-50"
                   >

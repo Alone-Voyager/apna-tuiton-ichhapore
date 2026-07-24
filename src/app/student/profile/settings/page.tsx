@@ -166,7 +166,13 @@ export default function SettingsPage() {
               <div className="pt-8 flex flex-col sm:flex-row gap-4 items-center justify-end border-t border-slate-100">
                 <button 
                   type="button" 
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.history.length > 1) {
+                      router.back();
+                    } else {
+                      router.push('/student/profile');
+                    }
+                  }}
                   className="w-full sm:w-auto px-6 py-3 flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all duration-300 font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />

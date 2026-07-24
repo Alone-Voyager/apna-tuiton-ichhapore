@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Test, ClassData, EnrichedClass, StudentResult } from '../types';
 
 export function useTestsManager() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const classIdParam = searchParams.get('classId');
+  const testIdParam = searchParams.get('testId');
+
   const [tests, setTests] = useState<Test[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -37,6 +43,35 @@ export function useTestsManager() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Sync level and selected test/class with URL params for history navigation
+  useEffect(() => {
+    if (classIdParam) {
+      setSelectedClassId(classIdParam);
+      const cls = classes.find(c => c.id === classIdParam);
+      if (cls) setSelectedClassName(cls.name);
+
+      if (testIdParam) {
+        setSelectedTestId(testIdParam);
+        const t = tests.find(x => x.id === testIdParam);
+        if (t) {
+          setSelectedTest(t);
+        }
+        fetchTestDetails(testIdParam);
+        setLevel('students');
+      } else {
+        setSelectedTestId(null);
+        setSelectedTest(null);
+        setLevel('tests');
+      }
+    } else {
+      setSelectedClassId(null);
+      setSelectedClassName('');
+      setSelectedTestId(null);
+      setSelectedTest(null);
+      setLevel('classes');
+    }
+  }, [classIdParam, testIdParam, classes, tests]);
 
   async function fetchData() {
     setLoading(true);
@@ -113,28 +148,31 @@ export function useTestsManager() {
   }
 
   const handleClassClick = (cls: ClassData | { id: string, name: string }) => {
-    setSelectedClassId(cls.id);
-    setSelectedClassName(cls.name);
-    setLevel('tests');
+    router.push(`/dashboard/tests?classId=${cls.id}`);
   };
 
   const handleTestClick = (t: Test) => {
-    setSelectedTestId(t.id);
-    setSelectedTest(t);
-    fetchTestDetails(t.id);
-    setLevel('students');
+    const cId = selectedClassId || t.class_id || t.classes?.id || '';
+    router.push(`/dashboard/tests?classId=${cId}&testId=${t.id}`);
   };
 
   const handleBreadcrumb = (targetLevel: 'classes' | 'tests') => {
     if (targetLevel === 'classes') {
-      setLevel('classes');
-      setSelectedClassId(null);
-      setSelectedTestId(null);
-      setSelectedStudentIdx(null);
+      router.push('/dashboard/tests');
     } else if (targetLevel === 'tests') {
-      setLevel('tests');
-      setSelectedTestId(null);
-      setSelectedStudentIdx(null);
+      if (selectedClassId) {
+        router.push(`/dashboard/tests?classId=${selectedClassId}`);
+      } else {
+        router.push('/dashboard/tests');
+      }
+    }
+  };
+
+  const handleBackClick = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      handleBreadcrumb(level === 'students' ? 'tests' : 'classes');
     }
   };
 
@@ -379,7 +417,7 @@ export function useTestsManager() {
     uploadingAnswerSheet, drawerSuccess, drawerError, activeAccordion, showCreate, creating, createError,
     form, deleteTestId, deleteStage, deleting, uploadingPaper,
     setStudentFilter, setShowCreate, setForm, setDeleteStage, setSelectedStudentIdx, setActiveAccordion, setDrawerInput,
-    handleClassClick, handleTestClick, handleBreadcrumb, handleCreate, initDelete, confirmDeleteStep1, executeDelete,
+    handleClassClick, handleTestClick, handleBreadcrumb, handleBackClick, handleCreate, initDelete, confirmDeleteStep1, executeDelete,
     openStudentDrawer, navigateStudent, handleSaveStudentResult, handleUploadAnswerSheet, handleDeleteAnswerSheet,
     uploadQuestionPaper, enrichedClasses, filteredTests, filteredStudents
   };

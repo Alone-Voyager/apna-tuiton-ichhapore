@@ -151,5 +151,36 @@ export function ApiProxyInit() {
     console.log("[API Proxy] Interceptor active. Redirecting /api/* to " + API_BASE_URL);
   }, []);
 
+  // Handle Capacitor Android Hardware Back Button
+  useEffect(() => {
+    if (typeof window === "undefined" || !Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    let backListener: any = null;
+    const pkgName = '@capacitor/app';
+    import(/* webpackIgnore: true */ pkgName)
+      .then((mod: any) => {
+        const App = mod?.App;
+        if (!App) return;
+        App.addListener('backButton', () => {
+          if (window.history.length > 1) {
+            window.history.back();
+          } else if (typeof App.exitApp === 'function') {
+            App.exitApp();
+          }
+        }).then((l: any) => {
+          backListener = l;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      if (backListener && typeof backListener.remove === 'function') {
+        backListener.remove();
+      }
+    };
+  }, []);
+
   return null;
 }

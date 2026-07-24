@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
-import { Download, FileSpreadsheet, Users, CheckCircle, XCircle, Clock, TrendingUp, BarChart2, RefreshCw, Mail, Phone, Eye, Trophy, Calendar, AlertTriangle, Heart, Home, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Download, FileSpreadsheet, Users, CheckCircle, XCircle, Clock, TrendingUp, BarChart2, RefreshCw, Mail, Phone, Eye, Trophy, Calendar, AlertTriangle, Heart, Home, HelpCircle, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface AttendanceStats {
   overallAttendance: string;
@@ -262,9 +262,23 @@ export default function AttendanceReport() {
     { title: 'Late Arrivals', value: reportData.stats.lateArrivals.toString(), icon: Clock, bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },
   ] : [];
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/reports');
+    }
+  };
+
   return (
     <div className="min-h-full bg-gray-50">
       <main className="p-4 lg:p-6">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-2 text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Reports
+          </Button>
+        </div>
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />

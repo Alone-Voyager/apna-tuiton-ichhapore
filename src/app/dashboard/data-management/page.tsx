@@ -1,28 +1,35 @@
 "use client"
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from "../../../components/ui/button"
 import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { ImportDataTab } from "../../../components/import-data-tab"
 import { ExportDataTab } from "../../../components/export-data-tab"
 import { DeleteDataTab } from "../../../components/delete-data-tab"
 
 export default function DataManagementPage() {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/dashboard')
+    }
+  }
 
   return (
     <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
         <div className="mb-6">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Back to Dashboard</span>
-                  <span className="sm:hidden">Back</span>
-                </Button>
-              </Link>
-            </div>
+          <Button variant="ghost" size="sm" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
+          </Button>
+        </div>
 
             <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Data Management</h1>
 

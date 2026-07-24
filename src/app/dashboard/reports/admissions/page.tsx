@@ -1,7 +1,8 @@
 "use client"
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
-import { Download, FileSpreadsheet, FileText, CheckCircle, Clock, XCircle, TrendingUp, BarChart2, RefreshCw, ArrowUp, Trophy, AlertTriangle, Globe, User, Users } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, CheckCircle, Clock, XCircle, TrendingUp, BarChart2, RefreshCw, ArrowUp, Trophy, AlertTriangle, Globe, User, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -19,6 +20,7 @@ interface ClassWiseData {
 }
 
 export default function AdmissionsReport() {
+  const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('this_month');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [customStartDate, setCustomStartDate] = useState<string>('');
@@ -30,6 +32,14 @@ export default function AdmissionsReport() {
   const [classWiseData, setClassWiseData] = useState<ClassWiseData[]>([]);
   const [studentDetails, setStudentDetails] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/reports');
+    }
+  };
 
   const admissionStats = [
     { title: 'Total Admissions', value: totalAdmissions, icon: FileText, color: 'blue', change: '+12%' },
@@ -423,6 +433,12 @@ export default function AdmissionsReport() {
   return (
     <div className="min-h-full bg-gray-50">
       <main className="p-4 lg:p-6">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-2 text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Reports
+          </Button>
+        </div>
             <div className="space-y-6">
               {/* Filter Controls */}
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 lg:p-6">

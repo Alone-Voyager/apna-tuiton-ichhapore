@@ -62,7 +62,16 @@ interface StatsData {
   currentMonth: string;
 }
 
-export default function FeesPage() {
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+function FeesPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const classParam = searchParams.get('class');
+  const tabParam = searchParams.get('tab');
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'all' | 'paid' | 'unpaid' | 'overdue'>('all');
@@ -86,6 +95,19 @@ export default function FeesPage() {
   const [monthsGenerated, setMonthsGenerated] = useState<Set<string>>(new Set());
   const [activeSubView, setActiveSubView] = useState<'overview' | 'analytics'>('overview');
   const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    if (tabParam === 'analytics') {
+      setActiveSubView('analytics');
+    } else {
+      setActiveSubView('overview');
+    }
+    if (classParam) {
+      setSelectedClass(classParam);
+    } else {
+      setSelectedClass(null);
+    }
+  }, [classParam, tabParam]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -171,7 +193,7 @@ export default function FeesPage() {
   const selectedClassData = classesData.find(cls => cls.name === selectedClass);
 
   const handleClassSelect = (className: string) => {
-    setSelectedClass(className);
+    router.push(`/dashboard/fees?class=${encodeURIComponent(className)}`);
     setSelectedTab('all'); // Reset tab when switching classes
     setSearchQuery(''); // Reset search when switching classes
   };
@@ -400,8 +422,7 @@ export default function FeesPage() {
           <div className="flex border border-slate-200 mb-6 bg-slate-100/50 p-1 rounded-xl shadow-inner max-w-md">
             <button
               onClick={() => {
-                setActiveSubView('overview');
-                fetchFeeStats();
+                router.push(selectedClass ? `/dashboard/fees?class=${encodeURIComponent(selectedClass)}` : '/dashboard/fees');
               }}
               className={`flex-1 py-2.5 px-4 text-center rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer ${
                 activeSubView === 'overview'
@@ -413,7 +434,7 @@ export default function FeesPage() {
             </button>
             <button
               onClick={() => {
-                setActiveSubView('analytics');
+                router.push('/dashboard/fees?tab=analytics');
                 setAnalyticsRefreshTrigger(prev => prev + 1);
               }}
               className={`flex-1 py-2.5 px-4 text-center rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer ${
@@ -542,10 +563,13 @@ export default function FeesPage() {
                   <div>
                     <button
                       onClick={() => {
-                        setSelectedClass(null);
-                        setSearchQuery(''); // Reset search when going back
+                        if (typeof window !== 'undefined' && window.history.length > 1) {
+                          router.back();
+                        } else {
+                          router.push('/dashboard/fees');
+                        }
                       }}
-                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 mb-2 sm:mb-0"
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 mb-2 sm:mb-0 cursor-pointer"
                     >
                       <ArrowLeft className="w-5 h-5" />
                       <span className="text-sm sm:text-base">Back to Classes</span>
@@ -1043,5 +1067,17 @@ export default function FeesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FeesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-full bg-slate-50 p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    }>
+      <FeesPageContent />
+    </Suspense>
   );
 }

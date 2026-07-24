@@ -1,7 +1,8 @@
 "use client"
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
-import { Bell, Mail, CheckCircle, FileText, Plus, Filter, Download, Edit, Eye, Trash2, FileText as FileTextIcon } from 'lucide-react';
+import { Bell, Mail, CheckCircle, FileText, Plus, Filter, Download, Edit, Eye, Trash2, FileText as FileTextIcon, ArrowLeft } from 'lucide-react';
 
 type ReminderSettings = {
   feeReminders: boolean;
@@ -12,6 +13,14 @@ type ReminderSettings = {
 };
 
 export default function Reminders() {
+  const router = useRouter();
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/settings');
+    }
+  };
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings>({
     feeReminders: true,
@@ -124,6 +133,12 @@ export default function Reminders() {
   return (
     <div className="min-h-full bg-gray-50">
       <main className="p-4 lg:p-6">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-2 text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Settings
+          </Button>
+        </div>
         <div className="space-y-6">
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -38,10 +38,11 @@ interface Student {
   notes: string | null
 }
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 
 function StudentDetailsContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [student, setStudent] = useState<Student | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,6 +50,14 @@ function StudentDetailsContent() {
   const [studentId, setStudentId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [actionsOpen, setActionsOpen] = useState(false)
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/dashboard/students')
+    }
+  }
 
   useEffect(() => {
     const id = searchParams.get('id')
@@ -129,12 +138,10 @@ function StudentDetailsContent() {
       <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
             <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
               <div className="container mx-auto px-4 py-4">
-                <Link href="/dashboard/students">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Students
-                  </Button>
-                </Link>
+                <Button variant="ghost" size="sm" className="gap-2" onClick={handleBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
               </div>
             </header>
             <main className="container mx-auto px-4 py-8">
@@ -166,12 +173,10 @@ function StudentDetailsContent() {
     <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-50">
           <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
             <div className="container mx-auto px-4 py-4">
-              <Link href="/dashboard/students">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Students
-                </Button>
-              </Link>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
             </div>
           </header>
 

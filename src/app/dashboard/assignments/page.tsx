@@ -34,7 +34,16 @@ const STATUS_COLORS: Record<string, string> = {
     late: 'bg-orange-100 text-orange-700 border-orange-200',
 };
 
-export default function AdminAssignmentsPage() {
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+function AssignmentsContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const classIdParam = searchParams.get('classId');
+    const assignmentIdParam = searchParams.get('assignmentId');
+
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Data States
@@ -80,6 +89,35 @@ export default function AdminAssignmentsPage() {
         fetchData();
     }, []);
 
+    // Sync level state with URL parameters for robust history navigation
+    useEffect(() => {
+        if (classIdParam) {
+            setSelectedClassId(classIdParam);
+            const cls = classes.find(c => c.id === classIdParam);
+            if (cls) setSelectedClassName(cls.name);
+
+            if (assignmentIdParam) {
+                setSelectedAssignmentId(assignmentIdParam);
+                const assmt = assignments.find(a => a.id === assignmentIdParam);
+                if (assmt) {
+                    setSelectedAssignment(assmt);
+                    fetchSubmissions(assmt.id);
+                }
+                setLevel('students');
+            } else {
+                setSelectedAssignmentId(null);
+                setSelectedAssignment(null);
+                setLevel('assignments');
+            }
+        } else {
+            setSelectedClassId(null);
+            setSelectedClassName('');
+            setSelectedAssignmentId(null);
+            setSelectedAssignment(null);
+            setLevel('classes');
+        }
+    }, [classIdParam, assignmentIdParam, classes, assignments]);
+
     async function fetchData() {
         setLoading(true);
         try {
@@ -123,28 +161,31 @@ export default function AdminAssignmentsPage() {
 
     // --- Navigation Handlers ---
     const handleClassClick = (cls: ClassData | { id: string, name: string }) => {
-        setSelectedClassId(cls.id);
-        setSelectedClassName(cls.name);
-        setLevel('assignments');
+        router.push(`/dashboard/assignments?classId=${cls.id}`);
     };
 
     const handleAssignmentClick = (assmt: Assignment) => {
-        setSelectedAssignmentId(assmt.id);
-        setSelectedAssignment(assmt);
-        fetchSubmissions(assmt.id);
-        setLevel('students');
+        const cId = selectedClassId || assmt.class_id || '';
+        router.push(`/dashboard/assignments?classId=${cId}&assignmentId=${assmt.id}`);
     };
 
     const handleBreadcrumbClick = (targetLevel: 'classes' | 'assignments') => {
         if (targetLevel === 'classes') {
-            setLevel('classes');
-            setSelectedClassId(null);
-            setSelectedAssignmentId(null);
-            setSelectedSubmission(null);
+            router.push('/dashboard/assignments');
         } else if (targetLevel === 'assignments') {
-            setLevel('assignments');
-            setSelectedAssignmentId(null);
-            setSelectedSubmission(null);
+            if (selectedClassId) {
+                router.push(`/dashboard/assignments?classId=${selectedClassId}`);
+            } else {
+                router.push('/dashboard/assignments');
+            }
+        }
+    };
+
+    const handleBackClick = () => {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            router.back();
+        } else {
+            handleBreadcrumbClick(level === 'students' ? 'assignments' : 'classes');
         }
     };
 
@@ -290,7 +331,7 @@ export default function AdminAssignmentsPage() {
         <div className="flex items-center gap-3">
             {level !== 'classes' && (
                 <button
-                    onClick={() => handleBreadcrumbClick(level === 'students' ? 'assignments' : 'classes')}
+                    onClick={handleBackClick}
                     className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95"
                 >
                     <ArrowLeft className="w-4 h-4" />
@@ -725,5 +766,17 @@ export default function AdminAssignmentsPage() {
             )}
 
         </div>
+    );
+}
+
+export default function AdminAssignmentsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-full bg-slate-50 p-8 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
+            </div>
+        }>
+            <AssignmentsContent />
+        </Suspense>
     );
 }

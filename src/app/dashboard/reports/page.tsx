@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { User, DollarSign, Users, BookOpen, UserPlus, CalendarCheck, Coins, BarChart2, Users2, TrendingUp, Calendar, FileBarChart, Download, Eye, Share2, FileText, RefreshCw, Filter, Plus, MoreVertical } from 'lucide-react';
 
+import { useRouter } from 'next/navigation';
+
 export default function Reports() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [selectedPeriod, setSelectedPeriod] = useState('this_month');
   const [selectedReport, setSelectedReport] = useState('overview');
@@ -31,42 +34,28 @@ export default function Reports() {
       description: 'Track new admissions and application status',
       icon: 'UserPlus',
       color: 'blue',
-      link: '/reports/admissions'
+      link: '/dashboard/reports/admissions'
     },
     {
       title: 'Attendance Reports',
       description: 'Detailed attendance analysis and trends',
       icon: 'CalendarCheck',
       color: 'green',
-      link: '/reports/attendance'
+      link: '/dashboard/reports/attendance'
     },
     {
       title: 'Fee Collections',
       description: 'Revenue reports and payment analytics',
       icon: 'Coins',
       color: 'yellow',
-      link: '/reports/collections'
+      link: '/dashboard/reports/collections'
     },
     {
-      title: 'Performance Analytics',
-      description: 'Student performance and academic reports',
+      title: 'Advanced Analytics',
+      description: 'Custom reports and deep data analysis',
       icon: 'BarChart2',
       color: 'purple',
-      link: '/reports/performance'
-    },
-    {
-      title: 'Staff Reports',
-      description: 'Teacher performance and salary reports',
-      icon: 'Users2',
-      color: 'red',
-      link: '/reports/staff'
-    },
-    {
-      title: 'Financial Summary',
-      description: 'Complete financial overview and projections',
-      icon: 'TrendingUp',
-      color: 'indigo',
-      link: '/reports/financial'
+      link: '/dashboard/reports/advanced'
     }
   ];
 
@@ -193,13 +182,17 @@ export default function Reports() {
                 <h3 className="text-base lg:text-lg font-semibold text-slate-800 mb-4 lg:mb-6">Quick Report Generation</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                   {quickReports.map((report, index) => (
-                    <div key={index} className="border border-slate-200 rounded-lg p-4 lg:p-6 hover:shadow-md transition-shadow cursor-pointer">
+                    <div
+                      key={index}
+                      onClick={() => router.push(report.link)}
+                      className="border border-slate-200 rounded-lg p-4 lg:p-6 hover:shadow-md transition-shadow cursor-pointer group"
+                    >
                       <div className="flex flex-col items-center space-x-3">
                         <div className={`w-10 h-10 lg:w-12 lg:h-12 bg-${report.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}>
                           {getIconComponent(report.icon, `text-${report.color}-600 w-5 h-5 lg:w-6 lg:h-6`)}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-slate-800 text-center mb-1">{report.title}</h4>
+                        <div className="flex-1 min-w-0 text-center">
+                          <h4 className="font-medium text-slate-800 text-center mb-1 group-hover:text-red-600 transition-colors">{report.title}</h4>
                           <p className="text-sm text-slate-600 mb-3">{report.description}</p>
                           <Button size="sm" variant="outline" className="w-full">
                             <FileBarChart className="mr-2 w-4 h-4" />

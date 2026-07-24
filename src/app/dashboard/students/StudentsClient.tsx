@@ -1037,7 +1037,7 @@ export default function StudentsClient() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <button
-                                onClick={() => router.push(`/dashboard/students/${student.id}`)}
+                                onClick={() => router.push(`/dashboard/students/details?id=${student.id}`)}
                                 className="p-2 hover:bg-slate-100 rounded-lg"
                               >
                                 <Eye className="text-slate-600 w-4 h-4" />
@@ -1103,7 +1103,7 @@ export default function StudentsClient() {
                             <td className="py-3 px-4">
                               <div className="flex items-center space-x-2">
                                 <button
-                                  onClick={() => router.push(`/dashboard/students/${student.id}`)}
+                                  onClick={() => router.push(`/dashboard/students/details?id=${student.id}`)}
                                   className="p-1 hover:bg-slate-100 rounded"
                                 >
                                   <Eye className="text-slate-600 w-4 h-4" />

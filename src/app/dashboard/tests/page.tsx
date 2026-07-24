@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useTestsManager } from './hooks/useTestsManager';
 import { ClassGrid } from './components/ClassGrid';
@@ -10,14 +11,14 @@ import { CreateTestModal } from './components/CreateTestModal';
 import { DeleteTestModal } from './components/DeleteTestModal';
 import { Test } from './types';
 
-export default function AdminTestsPage() {
+function TestsContent() {
   const {
     loading, level, selectedClassName, selectedTest,
     detailedStudents, studentFilter, selectedStudentIdx, drawerInput, savingDrawer,
     uploadingAnswerSheet, drawerSuccess, drawerError, activeAccordion, showCreate, creating, createError,
     form, deleteStage, deleting, uploadingPaper,
     setStudentFilter, setShowCreate, setForm, setDeleteStage, setSelectedStudentIdx, setActiveAccordion, setDrawerInput,
-    handleClassClick, handleTestClick, handleBreadcrumb, handleCreate, initDelete, confirmDeleteStep1, executeDelete,
+    handleClassClick, handleTestClick, handleBreadcrumb, handleBackClick, handleCreate, initDelete, confirmDeleteStep1, executeDelete,
     navigateStudent, handleSaveStudentResult, handleUploadAnswerSheet, handleDeleteAnswerSheet,
     uploadQuestionPaper, enrichedClasses, filteredTests, filteredStudents, students
   } = useTestsManager();
@@ -49,7 +50,7 @@ export default function AdminTestsPage() {
           <div className="flex items-center gap-3">
             {level !== 'classes' && (
               <button
-                onClick={() => handleBreadcrumb(level === 'students' ? 'tests' : 'classes')}
+                onClick={handleBackClick}
                 className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -149,5 +150,17 @@ export default function AdminTestsPage() {
         />
       </main>
     </div>
+  );
+}
+
+export default function AdminTestsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-full bg-[#F8FAFC] p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    }>
+      <TestsContent />
+    </Suspense>
   );
 }

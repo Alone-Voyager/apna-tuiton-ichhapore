@@ -1,7 +1,8 @@
 "use client"
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '../../../../components/ui/button';
-import { MessageCircle, AlertCircle, CheckCircle2, Loader2, Copy, Check, RefreshCw, X } from 'lucide-react';
+import { MessageCircle, AlertCircle, CheckCircle2, Loader2, Copy, Check, RefreshCw, X, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '../../../../components/ui/alert';
 
 interface WhatsAppSettings {
@@ -21,6 +22,15 @@ interface WhatsAppSettings {
 }
 
 export default function IntegrationsPage() {
+  const router = useRouter();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/settings');
+    }
+  };
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -199,6 +209,12 @@ export default function IntegrationsPage() {
   return (
     <div className="min-h-full bg-white">
       <main className="p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-2 text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Settings
+          </Button>
+        </div>
         {/* Success/Error Messages */}
             {error && (
               <Alert variant="destructive" className="mb-6">
