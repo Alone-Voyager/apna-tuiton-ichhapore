@@ -259,38 +259,28 @@ export async function GET(request: NextRequest) {
     console.log('Overdue payment student IDs:', Array.from(studentsWithOverduePayments));
     console.log('Students with paid fees:', studentsWithPaidFees.size);
 
-    // IMPORTANT: Filter students to include:
-    // 1. All active students (is_active=true AND status != 'suspended' AND status != 'inactive')
-    // 2. Suspended students who have overdue payments OR paid fees
-    //    - Suspended students without any fee activity are excluded
-    //    - Suspended students with overdue: see only their overdue entries
-    //    - Suspended students with paid: see only their paid entries
+    const isStudentActive = (s: any) => {
+      const isActiveFlag = s.is_active === true || s.is_active === 1 || s.is_active === 'true' || s.is_active === undefined;
+      const isStatusNotInactive = s.status !== 'inactive' && s.status !== 'suspended';
+      return isActiveFlag && isStatusNotInactive;
+    };
+
+    // Filter students to include active students + suspended with fee activity
     const filteredStudents = allStudents?.filter(student => {
-      const isActive = Boolean(student.is_active) && student.status !== 'suspended' && student.status !== 'inactive';
+      const isActive = isStudentActive(student);
       const isSuspendedWithOverdue = student.status === 'suspended' && studentsWithOverduePayments.has(student.id);
       const isSuspendedWithPaid = student.status === 'suspended' && studentsWithPaidFees.has(student.id);
-      
-      if (student.status === 'suspended') {
-        console.log(`Suspended student ${student.name}:`, {
-          id: student.id,
-          hasOverdue: studentsWithOverduePayments.has(student.id),
-          hasPaid: studentsWithPaidFees.has(student.id),
-          willBeIncluded: isSuspendedWithOverdue || isSuspendedWithPaid
-        });
-      }
       
       return isActive || isSuspendedWithOverdue || isSuspendedWithPaid;
     });
 
-    // Create a Set of valid student IDs (to prevent deleted/inactive students from populating class maps)
+    // Create a Set of valid student IDs
     const validStudentIds = new Set(filteredStudents?.map(s => s.id) || []);
 
     console.log('Filtered students count:', filteredStudents?.length);
-    console.log('Suspended students in filtered list:', filteredStudents?.filter(s => s.status === 'suspended').length);
 
     // Calculate overall stats
-    // Total students from filtered list (active + valid suspended)
-    const totalStudents = filteredStudents?.filter(s => Boolean(s.is_active) && s.status === 'active').length || 0;
+    const totalStudents = filteredStudents?.filter(isStudentActive).length || 0;
     
     // Count from fee_payments (filtered to valid students only)
     const validFeePayments = feePayments?.filter(fp => validStudentIds.has(fp.student_id)) || [];
@@ -311,10 +301,30 @@ export async function GET(request: NextRequest) {
     const collectedFees = (validFeePayments.reduce((sum, fp) => sum + Number(fp.paid_amount), 0)) + 
                          (validPaidHistory.reduce((sum, fp) => sum + Number(fp.paid_amount), 0));
 
-    // Group by class (combine students table data with fee info)
+    // Fetch all classes for organization to ensure empty classes appear correctly
+    const { data: orgClasses } = await supabase
+      .from('classes')
+      .select('id, name')
+      .eq('organization_id', userData.organization_id);
+
+    // Group by class
     const classFeeMap = new Map();
     
-    // First, add filtered students to the map (active students + suspended with overdue)
+    orgClasses?.forEach(cls => {
+      classFeeMap.set(cls.name, {
+        id: cls.id,
+        name: cls.name,
+        students: new Map(),
+        totalFees: 0,
+        collectedFees: 0,
+        paidCount: 0,
+        unpaidCount: 0,
+        overdueCount: 0,
+        partialCount: 0,
+      });
+    });
+
+    // Add filtered students to the map
     filteredStudents?.forEach(student => {
       const classData = (student as any).classes;
       const className = classData?.name || 'Unassigned';
@@ -336,7 +346,6 @@ export async function GET(request: NextRequest) {
 
       const classStats = classFeeMap.get(className);
       
-      // Add student if not already added
       if (!classStats.students.has(student.id)) {
         classStats.students.set(student.id, {
           id: student.id,
@@ -345,6 +354,7 @@ export async function GET(request: NextRequest) {
           admissionDate: student.admission_date,
           monthlyFee: student.monthly_fee,
           status: student.status,
+          is_active: student.is_active,
           whatsapp: student.whatsapp,
           feePayments: []
         });
@@ -357,19 +367,16 @@ export async function GET(request: NextRequest) {
       const classData = student?.classes;
       const className = classData?.name || 'Unassigned';
 
-      // Only process if class already exists (from students table)
       if (!classFeeMap.has(className)) {
-        return; // Skip if student's class not found
+        return;
       }
 
-      // For suspended students, ONLY process overdue payments
       if (student.status === 'suspended' && fp.status !== 'Overdue') {
-        return; // Skip non-overdue payments for suspended students
+        return;
       }
 
       const classStats = classFeeMap.get(className);
       
-      // Get or create student entry
       if (!classStats.students.has(fp.student_id)) {
         classStats.students.set(fp.student_id, {
           id: student.id,
@@ -378,12 +385,12 @@ export async function GET(request: NextRequest) {
           admissionDate: student.admission_date,
           monthlyFee: student.monthly_fee,
           status: student.status,
+          is_active: student.is_active,
           whatsapp: student.whatsapp,
           feePayments: []
         });
       }
 
-      // Add fee payment to student
       const studentData = classStats.students.get(fp.student_id);
       studentData.feePayments.push({
         id: fp.id,
@@ -400,7 +407,6 @@ export async function GET(request: NextRequest) {
         notes: fp.notes,
       });
 
-      // Update class stats (only for fee_payments statuses)
       classStats.totalFees += Number(fp.amount);
       classStats.collectedFees += Number(fp.paid_amount);
       
@@ -409,7 +415,7 @@ export async function GET(request: NextRequest) {
       if (fp.status === 'Partial') classStats.partialCount++;
     });
 
-    // Process paid history (fees that were collected) - ONLY for valid active/suspended students
+    // Process paid history - ONLY for valid active/suspended students
     validPaidHistory.forEach(fp => {
       const student = (fp as any).students;
       const classData = student?.classes;
@@ -429,6 +435,7 @@ export async function GET(request: NextRequest) {
           admissionDate: student.admission_date,
           monthlyFee: student.monthly_fee,
           status: student.status,
+          is_active: student.is_active,
           whatsapp: student.whatsapp,
           feePayments: []
         });
@@ -459,7 +466,7 @@ export async function GET(request: NextRequest) {
     const classesData = Array.from(classFeeMap.values()).map(classData => ({
       id: classData.id,
       name: classData.name,
-      totalStudents: Array.from(classData.students.values()).filter((s: any) => s.status === 'active' || s.status === undefined).length,
+      totalStudents: Array.from(classData.students.values()).filter(isStudentActive).length,
       paidStudents: classData.paidCount,
       unpaidStudents: classData.unpaidCount,
       overdueStudents: classData.overdueCount,

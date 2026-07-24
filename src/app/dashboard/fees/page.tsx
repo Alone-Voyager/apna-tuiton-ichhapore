@@ -62,12 +62,13 @@ interface StatsData {
   currentMonth: string;
 }
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 
 function FeesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const classParam = searchParams.get('class');
   const tabParam = searchParams.get('tab');
@@ -122,14 +123,20 @@ function FeesPageContent() {
   useEffect(() => {
     fetchFeeStats();
 
-    const handleFocus = () => {
+    const handleUpdate = () => {
       fetchFeeStats();
     };
-    window.addEventListener('focus', handleFocus);
+
+    window.addEventListener('student-updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+    document.addEventListener('visibilitychange', handleUpdate);
+
     return () => {
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('student-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+      document.removeEventListener('visibilitychange', handleUpdate);
     };
-  }, [selectedClass, selectedMonth, testDate]); // Re-fetch when class, month, or test date changes
+  }, [pathname, classParam, tabParam, selectedClass, selectedMonth, testDate]);
 
   const fetchFeeStats = async () => {
     try {

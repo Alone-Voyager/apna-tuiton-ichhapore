@@ -490,6 +490,11 @@ export default function StudentsClient() {
       await fetchClasses();
       await fetchStudents();
       await fetchInactiveStudents();
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('student-updated'));
+      }
+      router.refresh();
     } catch (err: any) {
       console.error('Error deleting student:', err);
       setError(err.message || 'Failed to delete student');
