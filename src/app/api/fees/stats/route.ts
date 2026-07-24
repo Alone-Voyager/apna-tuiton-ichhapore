@@ -260,13 +260,13 @@ export async function GET(request: NextRequest) {
     console.log('Students with paid fees:', studentsWithPaidFees.size);
 
     // IMPORTANT: Filter students to include:
-    // 1. All active students (all payment statuses)
+    // 1. All active students (is_active=true AND status != 'suspended' AND status != 'inactive')
     // 2. Suspended students who have overdue payments OR paid fees
     //    - Suspended students without any fee activity are excluded
     //    - Suspended students with overdue: see only their overdue entries
     //    - Suspended students with paid: see only their paid entries
     const filteredStudents = allStudents?.filter(student => {
-      const isActive = student.is_active && student.status !== 'suspended';
+      const isActive = Boolean(student.is_active) && student.status !== 'suspended' && student.status !== 'inactive';
       const isSuspendedWithOverdue = student.status === 'suspended' && studentsWithOverduePayments.has(student.id);
       const isSuspendedWithPaid = student.status === 'suspended' && studentsWithPaidFees.has(student.id);
       
@@ -282,29 +282,34 @@ export async function GET(request: NextRequest) {
       return isActive || isSuspendedWithOverdue || isSuspendedWithPaid;
     });
 
+    // Create a Set of valid student IDs (to prevent deleted/inactive students from populating class maps)
+    const validStudentIds = new Set(filteredStudents?.map(s => s.id) || []);
+
     console.log('Filtered students count:', filteredStudents?.length);
     console.log('Suspended students in filtered list:', filteredStudents?.filter(s => s.status === 'suspended').length);
 
     // Calculate overall stats
-    // Total students from filtered list
-    const totalStudents = filteredStudents?.length || 0;
+    // Total students from filtered list (active + valid suspended)
+    const totalStudents = filteredStudents?.filter(s => Boolean(s.is_active) && s.status === 'active').length || 0;
     
-    // Count from fee_payments (includes current month + all overdue from any month)
-    // Unpaid count: only from current/selected month
-    const unpaidCount = feePayments?.filter(fp => fp.status === 'Unpaid' && fp.payment_month === filterMonth).length || 0;
-    // Overdue count: from ALL months (that's why we fetch with .or filter)
-    const overdueCount = feePayments?.filter(fp => fp.status === 'Overdue').length || 0;
-    const partialCount = feePayments?.filter(fp => fp.status === 'Partial').length || 0;
+    // Count from fee_payments (filtered to valid students only)
+    const validFeePayments = feePayments?.filter(fp => validStudentIds.has(fp.student_id)) || [];
+    const validPaidHistory = paidHistory?.filter(fp => validStudentIds.has(fp.student_id)) || [];
+
+    // Unpaid count: only from current/selected month for valid students
+    const unpaidCount = validFeePayments.filter(fp => fp.status === 'Unpaid' && fp.payment_month === filterMonth).length;
+    // Overdue count: from ALL months for valid students
+    const overdueCount = validFeePayments.filter(fp => fp.status === 'Overdue').length;
+    const partialCount = validFeePayments.filter(fp => fp.status === 'Partial').length;
     
-    // Count ONLY paid from history (for current month)
-    const paidCount = paidHistory?.length || 0;
+    // Count ONLY paid from history (for current month) for valid students
+    const paidCount = validPaidHistory.length;
 
     // Total fees: sum of current month fees + paid history for current month
-    // Note: Overdue fees from previous months are already in feePayments
-    const totalFees = (feePayments?.reduce((sum, fp) => sum + Number(fp.amount), 0) || 0) +
-                     (paidHistory?.reduce((sum, fp) => sum + Number(fp.amount), 0) || 0);
-    const collectedFees = (feePayments?.reduce((sum, fp) => sum + Number(fp.paid_amount), 0) || 0) + 
-                         (paidHistory?.reduce((sum, fp) => sum + Number(fp.paid_amount), 0) || 0);
+    const totalFees = (validFeePayments.reduce((sum, fp) => sum + Number(fp.amount), 0)) +
+                     (validPaidHistory.reduce((sum, fp) => sum + Number(fp.amount), 0));
+    const collectedFees = (validFeePayments.reduce((sum, fp) => sum + Number(fp.paid_amount), 0)) + 
+                         (validPaidHistory.reduce((sum, fp) => sum + Number(fp.paid_amount), 0));
 
     // Group by class (combine students table data with fee info)
     const classFeeMap = new Map();
@@ -346,8 +351,8 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Process current fee payments (unpaid, pending, overdue)
-    feePayments?.forEach(fp => {
+    // Process current fee payments (unpaid, pending, overdue) - ONLY for valid active/suspended students
+    validFeePayments.forEach(fp => {
       const student = (fp as any).students;
       const classData = student?.classes;
       const className = classData?.name || 'Unassigned';
@@ -359,7 +364,6 @@ export async function GET(request: NextRequest) {
 
       // For suspended students, ONLY process overdue payments
       if (student.status === 'suspended' && fp.status !== 'Overdue') {
-        console.log(`Skipping ${fp.status} payment for suspended student ${student.name}`);
         return; // Skip non-overdue payments for suspended students
       }
 
@@ -405,23 +409,18 @@ export async function GET(request: NextRequest) {
       if (fp.status === 'Partial') classStats.partialCount++;
     });
 
-    // Process paid history (fees that were collected) - ONLY for paid count
-    paidHistory?.forEach(fp => {
+    // Process paid history (fees that were collected) - ONLY for valid active/suspended students
+    validPaidHistory.forEach(fp => {
       const student = (fp as any).students;
       const classData = student?.classes;
       const className = classData?.name || 'Unassigned';
 
-      // Only process if class already exists (from students table)
       if (!classFeeMap.has(className)) {
-        return; // Skip if student's class not found
+        return;
       }
-
-      // For suspended students, we DO want to show their paid history
-      // This allows tracking of payments made while suspended
 
       const classStats = classFeeMap.get(className);
       
-      // Get or create student entry
       if (!classStats.students.has(fp.student_id)) {
         classStats.students.set(fp.student_id, {
           id: student.id,
@@ -435,13 +434,12 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Add paid fee payment to student
       const studentData = classStats.students.get(fp.student_id);
       studentData.feePayments.push({
         id: fp.id,
         amount: fp.amount,
         paidAmount: fp.paid_amount,
-        status: 'Paid', // From history, so it's paid
+        status: 'Paid',
         paymentMonth: fp.payment_month,
         paymentDate: fp.payment_date,
         dueDate: fp.due_date,
@@ -452,7 +450,6 @@ export async function GET(request: NextRequest) {
         notes: fp.notes,
       });
 
-      // Update class stats - ONLY paid count and collected fees
       classStats.totalFees += Number(fp.amount);
       classStats.collectedFees += Number(fp.paid_amount);
       classStats.paidCount++;
@@ -462,7 +459,7 @@ export async function GET(request: NextRequest) {
     const classesData = Array.from(classFeeMap.values()).map(classData => ({
       id: classData.id,
       name: classData.name,
-      totalStudents: classData.students.size,
+      totalStudents: Array.from(classData.students.values()).filter((s: any) => s.status === 'active' || s.status === undefined).length,
       paidStudents: classData.paidCount,
       unpaidStudents: classData.unpaidCount,
       overdueStudents: classData.overdueCount,
@@ -472,6 +469,7 @@ export async function GET(request: NextRequest) {
       students: Array.from(classData.students.values()),
     }));
 
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
       stats: {
         totalStudents,
@@ -481,7 +479,7 @@ export async function GET(request: NextRequest) {
         partialCount,
         totalFees,
         collectedFees,
-        currentMonth: filterMonth, // Return the month being displayed
+        currentMonth: filterMonth,
       },
       classes: classesData,
     }, { status: 200, headers: response.headers });

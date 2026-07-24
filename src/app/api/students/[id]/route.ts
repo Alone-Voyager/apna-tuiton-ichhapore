@@ -176,21 +176,26 @@ export async function DELETE(
         );
       }
 
+      // Delete any unpaid pending fee entries for this deactivated student so they don't linger in pending stats
+      await supabase
+        .from('fee_payments')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('status', 'Unpaid');
+
       // Update class student count if student was in a class
       if (student.class_id) {
-        const { data: classData, error: classError } = await supabase
-          .from('classes')
-          .select('total_students')
-          .eq('id', student.class_id)
-          .single();
+        const { count: activeCount } = await supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .eq('class_id', student.class_id)
+          .eq('is_active', true)
+          .eq('status', 'active');
 
-        if (!classError && classData) {
-          const newCount = Math.max((classData.total_students || 1) - 1, 0);
-          await supabase
-            .from('classes')
-            .update({ total_students: newCount })
-            .eq('id', student.class_id);
-        }
+        await supabase
+          .from('classes')
+          .update({ total_students: activeCount || 0 })
+          .eq('id', student.class_id);
       }
 
       // Log activity
@@ -341,6 +346,7 @@ export async function PATCH(
       address,
       monthly_fee: parseFloat(monthly_fee),
       status,
+      is_active: status === 'active',
       notes,
       updated_at: new Date().toISOString(),
     };

@@ -121,6 +121,14 @@ function FeesPageContent() {
   // Fetch fee payment stats
   useEffect(() => {
     fetchFeeStats();
+
+    const handleFocus = () => {
+      fetchFeeStats();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [selectedClass, selectedMonth, testDate]); // Re-fetch when class, month, or test date changes
 
   const fetchFeeStats = async () => {
@@ -159,7 +167,7 @@ function FeesPageContent() {
       if (testDate) params.append('testDate', testDate);
 
       const url = `/api/fees/stats${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       const data = await response.json();
 
       if (!response.ok) {

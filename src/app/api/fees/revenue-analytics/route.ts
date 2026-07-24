@@ -42,17 +42,21 @@ export async function GET(request: NextRequest) {
     // 1. Sync all active student fee payments first to guarantee database is correct
     await syncAllStudentFeePayments(supabaseAdmin, organizationId);
 
-    // 2. Fetch all unpaid/pending payments
+    // 2. Fetch all unpaid/pending payments for active students
     const { data: unpaidPayments } = await supabaseAdmin
       .from('fee_payments')
-      .select('payment_month, amount, paid_amount')
-      .eq('organization_id', organizationId);
+      .select('payment_month, amount, paid_amount, students!inner(is_active, status)')
+      .eq('organization_id', organizationId)
+      .eq('students.is_active', true)
+      .neq('students.status', 'inactive');
 
-    // 3. Fetch all paid histories
+    // 3. Fetch all paid histories for active students
     const { data: paidHistories } = await supabaseAdmin
       .from('fee_payment_history')
-      .select('payment_month, amount, paid_amount')
-      .eq('organization_id', organizationId);
+      .select('payment_month, amount, paid_amount, students!inner(is_active, status)')
+      .eq('organization_id', organizationId)
+      .eq('students.is_active', true)
+      .neq('students.status', 'inactive');
 
     // 4. Compile metrics grouped by billing month
     const monthStatsMap = new Map<string, {
@@ -122,6 +126,7 @@ export async function GET(request: NextRequest) {
       return dateA.getTime() - dateB.getTime();
     });
 
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
       success: true,
       analytics
