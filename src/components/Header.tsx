@@ -1,6 +1,8 @@
 "use client"
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, CalendarCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getAdminProfile } from '../lib/supabase/auth';
 
 interface HeaderProps {
   title: string;
@@ -15,6 +17,17 @@ interface HeaderProps {
  */
 export default function Header({ title, subtitle, onMobileMenuToggle }: HeaderProps) {
   const router = useRouter();
+  const [role, setRole] = useState<string>('admin');
+
+  useEffect(() => {
+    async function loadRole() {
+      const { data } = await getAdminProfile();
+      if (data?.role) setRole(data.role);
+    }
+    loadRole();
+  }, []);
+
+  const isStaff = role === 'staff' || role === 'teacher';
 
   return (
     <div
@@ -56,22 +69,40 @@ export default function Header({ title, subtitle, onMobileMenuToggle }: HeaderPr
         </div>
       </div>
 
-      {/* Right: Add Student button */}
-      <button
-        onClick={() => router.push('/dashboard/admissions/new')}
-        style={{
-          background: '#1a1f2c', color: '#fff',
-          border: 'none', borderRadius: 12,
-          padding: '8px 14px', fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center',
-          gap: 6, flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-        }}
-        aria-label="Add new student"
-      >
-        <Plus size={15} />
-        <span className="hidden sm:inline">Add Student</span>
-      </button>
+      {/* Right: Role-aware Action button */}
+      {isStaff ? (
+        <button
+          onClick={() => router.push('/dashboard/attendance/daily')}
+          style={{
+            background: '#9333ea', color: '#fff',
+            border: 'none', borderRadius: 12,
+            padding: '8px 14px', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            gap: 6, flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(147,51,234,0.3)',
+          }}
+          aria-label="Mark attendance"
+        >
+          <CalendarCheck size={15} />
+          <span className="hidden sm:inline">Mark Attendance</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => router.push('/dashboard/admissions/new')}
+          style={{
+            background: '#1a1f2c', color: '#fff',
+            border: 'none', borderRadius: 12,
+            padding: '8px 14px', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            gap: 6, flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+          }}
+          aria-label="Add new student"
+        >
+          <Plus size={15} />
+          <span className="hidden sm:inline">Add Student</span>
+        </button>
+      )}
     </div>
   );
 }

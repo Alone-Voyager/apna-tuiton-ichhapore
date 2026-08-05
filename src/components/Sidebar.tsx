@@ -140,8 +140,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { href: '/dashboard/settings', label: 'More', icon: MoreHorizontalIcon, active: isParentActive(['/dashboard/settings']) },
       ];
 
+  const numTabs = navTabs.length > 0 ? navTabs.length : 1;
+  const tabWidthPercent = 100 / numTabs;
   const activeIndex = navTabs.findIndex(t => t.active);
   const currentIndex = activeIndex >= 0 ? activeIndex : 0;
+  const notchCxPercent = tabWidthPercent / 2 + currentIndex * tabWidthPercent;
   const ActiveIcon = navTabs[currentIndex].icon;
 
   return (
@@ -149,51 +152,37 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed left-0 top-0 h-full w-64 bg-slate-900 text-white shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}>
-        {/* Header with Close Button */}
-        <div
-          className="flex-shrink-0 border-b border-slate-700 flex items-center justify-between"
-          style={{
-            paddingTop: 'calc(env(safe-area-inset-top) + 24px)',
-            paddingBottom: '24px',
-            paddingLeft: '24px',
-            paddingRight: '16px'
-          }}
-        >
-          <div className="flex items-center space-x-3 flex-1 min-w-0 pr-2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden p-1">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+      {/* Sidebar Desktop & Mobile Drawer */}
+      <div
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 lg:w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
+      >
+        {/* Organization Branding */}
+        <div className="flex-shrink-0 p-6 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-tr from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/30">
+              <GraduationIcon className="text-white w-6 h-6" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div>
               {loadingOrg ? (
-                <div className="space-y-1">
-                  <div className="h-5 bg-slate-700 rounded w-24 animate-pulse"></div>
-                  <div className="h-3 bg-slate-700 rounded w-32 animate-pulse"></div>
-                </div>
+                <div className="h-5 w-24 bg-slate-800 animate-pulse rounded" />
               ) : (
-                <>
-                  <h1
-                    className="text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-white to-red-200 bg-clip-text text-transparent leading-tight whitespace-normal break-words"
-                    title={organizationName}
-                  >
-                    {organizationName}
-                  </h1>
-                  <p className="text-xs sm:text-xs text-slate-400">Tuition Management</p>
-                </>
+                <h1 className="font-bold text-white text-lg tracking-tight leading-none truncate max-w-[140px]">
+                  {organizationName}
+                </h1>
               )}
+              <p className="text-[11px] font-semibold text-slate-400 mt-1">Management Portal</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-2 hover:bg-slate-700 rounded-lg transition-colors shrink-0"
-            aria-label="Close menu"
+            className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            aria-label="Close sidebar"
           >
             <CloseIcon className="w-5 h-5 text-slate-300 hover:text-white" />
           </button>
@@ -529,7 +518,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     r="37"
                     fill="black"
                     className="transition-all duration-500 ease-[cubic-bezier(0.5,0,0.2,1)]"
-                    style={{ cx: `${10 + currentIndex * 20}%` }}
+                    style={{ cx: `${notchCxPercent}%` }}
                   />
                 </mask>
               </defs>
@@ -541,8 +530,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Sliding Active Red Bubble */}
             <div
-              className="absolute top-0 w-[20%] h-[3.5rem] flex justify-center z-50 transition-transform duration-500 ease-[cubic-bezier(0.5,0,0.2,1)] will-change-transform"
-              style={{ transform: `translateX(${currentIndex * 100}%)` }}
+              className="absolute top-0 h-[3.5rem] flex justify-center z-50 transition-transform duration-500 ease-[cubic-bezier(0.5,0,0.2,1)] will-change-transform"
+              style={{ width: `${tabWidthPercent}%`, transform: `translateX(${currentIndex * 100}%)` }}
             >
               <div className="absolute -top-[2.3rem] w-14 h-14 bg-red-500 rounded-full flex items-center justify-center shadow-[0px_8px_16px_-4px_rgba(239,68,68,0.5)] text-white hover:scale-110 active:scale-95 transition-transform duration-300">
                 <ActiveIcon className="w-6 h-6" strokeWidth={2.5} />
