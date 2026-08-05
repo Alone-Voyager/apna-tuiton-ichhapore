@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ApiProxyInit } from "../components/ApiProxyInit";
+import BackButtonHandler from "../components/BackButtonHandler";
 
 const interFont = Inter({
   variable: "--font-inter",
@@ -39,6 +40,7 @@ export default function RootLayout({
         className={`${interFont.variable} ${geistMono.variable} antialiased`}
       >
         <ApiProxyInit />
+        <BackButtonHandler />
         {children}
       </body>
     </html>
