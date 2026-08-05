@@ -78,7 +78,7 @@ export default function StaffLoginPage() {
         <div className="mb-6">
           <h2 className="text-3xl font-extrabold text-[#1f2937] tracking-tight mb-2">Staff Portal</h2>
           <p className="text-[#64748b] text-[15px] leading-relaxed font-medium">
-            Enter your staff credentials to access student admissions and daily attendance.
+            Enter your staff credentials to record and manage daily attendance.
           </p>
         </div>
 

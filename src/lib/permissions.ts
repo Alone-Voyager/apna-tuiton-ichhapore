@@ -59,26 +59,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   super_admin: [],
   staff: [
-    { module: 'students', action: 'view' },
-    { module: 'students', action: 'create' },
-    { module: 'students', action: 'edit' },
-    { module: 'students', action: 'export' },
-    { module: 'admissions', action: 'view' },
-    { module: 'admissions', action: 'create' },
-    { module: 'admissions', action: 'edit' },
     { module: 'attendance', action: 'view' },
     { module: 'attendance', action: 'create' },
     { module: 'attendance', action: 'edit' },
     { module: 'attendance', action: 'export' },
-    { module: 'assignments', action: 'view' },
-    { module: 'assignments', action: 'create' },
-    { module: 'assignments', action: 'edit' },
-    { module: 'tests', action: 'view' },
-    { module: 'tests', action: 'create' },
-    { module: 'tests', action: 'edit' },
   ],
   teacher: [
-    { module: 'students', action: 'view' },
     { module: 'attendance', action: 'view' },
     { module: 'attendance', action: 'create' },
     { module: 'attendance', action: 'edit' },
@@ -122,16 +108,25 @@ export function canAccessRoute(role: string | null | undefined, pathname: string
   if (!role) return false;
   if (role === 'admin' || role === 'super_admin') return true;
 
-  // Restricted routes for Staff
-  const restrictedPrefixes = [
-    '/dashboard/fees',
-    '/dashboard/reports',
-    '/dashboard/settings',
-    '/dashboard/data-management',
-    '/dashboard/analytics',
-  ];
+  if (role === 'staff') {
+    const allowedStaffPrefixes = [
+      '/staff/dashboard',
+      '/dashboard/attendance',
+    ];
+    const isAllowed = allowedStaffPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+    return isAllowed;
+  }
 
-  if (role === 'staff' || role === 'teacher') {
+  if (role === 'teacher') {
+    const restrictedPrefixes = [
+      '/dashboard/fees',
+      '/dashboard/reports',
+      '/dashboard/settings',
+      '/dashboard/data-management',
+      '/dashboard/analytics',
+      '/dashboard/students',
+      '/dashboard/admissions',
+    ];
     if (restrictedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'))) {
       return false;
     }

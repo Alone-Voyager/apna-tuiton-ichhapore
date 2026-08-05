@@ -348,7 +348,7 @@ export default function Settings() {
                     onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
                   >
-                    <option value="staff">Staff Member (Admissions & Attendance Access)</option>
+                    <option value="staff">Staff Member (Attendance Access Only)</option>
                     <option value="teacher">Teacher (Attendance & Assignments Access)</option>
                     <option value="admin">Administrator (Full System Access)</option>
                   </select>

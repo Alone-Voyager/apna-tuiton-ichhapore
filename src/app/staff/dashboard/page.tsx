@@ -81,11 +81,11 @@ export default function StaffDashboardPage() {
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           
           {/* Welcome Banner */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
             <div className="relative z-10">
-              <h2 className="text-2xl font-extrabold mb-1">Staff Dashboard</h2>
-              <p className="text-blue-100 text-sm font-medium max-w-xl">
-                Welcome back! Manage student admissions, search records, and mark daily attendance cleanly.
+              <h2 className="text-2xl font-extrabold mb-1">Staff Portal — Attendance</h2>
+              <p className="text-purple-100 text-sm font-medium max-w-xl">
+                Welcome back! Record daily student attendance and track class attendance stats.
               </p>
             </div>
             <div className="absolute -right-6 -bottom-6 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none" />
@@ -94,45 +94,32 @@ export default function StaffDashboardPage() {
           {/* Quick Actions */}
           <div>
             <p className="text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-3 px-1">
-              Quick Actions
+              Attendance Actions
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Link
-                href="/dashboard/admissions/new"
-                className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-md transition-all flex items-center space-x-3 group active:scale-95"
-              >
-                <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <UserPlus className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">Add Student</h3>
-                  <p className="text-xs text-slate-500">Register new admission</p>
-                </div>
-              </Link>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Link
                 href="/dashboard/attendance/daily"
-                className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-purple-300 hover:shadow-md transition-all flex items-center space-x-3 group active:scale-95"
+                className="p-5 rounded-2xl border border-purple-200 bg-white hover:border-purple-400 hover:shadow-md transition-all flex items-center space-x-4 group active:scale-95"
               >
-                <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                  <CalendarCheck className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors shrink-0">
+                  <CalendarCheck className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm group-hover:text-purple-600 transition-colors">Mark Attendance</h3>
-                  <p className="text-xs text-slate-500">Record daily entries</p>
+                  <h3 className="font-extrabold text-slate-800 text-base group-hover:text-purple-600 transition-colors">Mark Daily Attendance</h3>
+                  <p className="text-xs text-slate-500 font-medium">Record present/absent entries by class</p>
                 </div>
               </Link>
 
               <Link
-                href="/dashboard/students"
-                className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md transition-all flex items-center space-x-3 group active:scale-95"
+                href="/dashboard/attendance"
+                className="p-5 rounded-2xl border border-blue-200 bg-white hover:border-blue-400 hover:shadow-md transition-all flex items-center space-x-4 group active:scale-95"
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <Users2 className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                  <Clock className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm group-hover:text-emerald-600 transition-colors">View Students</h3>
-                  <p className="text-xs text-slate-500">Search & filter list</p>
+                  <h3 className="font-extrabold text-slate-800 text-base group-hover:text-blue-600 transition-colors">Attendance Overview</h3>
+                  <p className="text-xs text-slate-500 font-medium">View monthly calendar & summary stats</p>
                 </div>
               </Link>
             </div>
@@ -141,21 +128,13 @@ export default function StaffDashboardPage() {
           {/* Key Metrics */}
           <div>
             <p className="text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-3 px-1">
-              Overview Metrics
+              Today's Attendance Stats
             </p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatsCard
-                title="Total Active"
-                value={loading ? '...' : stats.totalStudents.toString()}
-                subtitle="Students Enrolled"
-                icon={<Users2 className="w-5 h-5 text-indigo-600" />}
-                iconBg="bg-indigo-50"
-              />
-
-              <StatsCard
                 title="Today's Attendance"
                 value={loading ? '...' : `${stats.attendancePercentage}%`}
-                subtitle="Attendance Rate"
+                subtitle="Overall Attendance Rate"
                 icon={<CalendarCheck className="w-5 h-5 text-purple-600" />}
                 iconBg="bg-purple-50"
               />
@@ -175,64 +154,30 @@ export default function StaffDashboardPage() {
                 icon={<XCircle className="w-5 h-5 text-rose-600" />}
                 iconBg="bg-rose-50"
               />
+
+              <StatsCard
+                title="Total Enrolled"
+                value={loading ? '...' : stats.totalStudents.toString()}
+                subtitle="Active Students"
+                icon={<Users2 className="w-5 h-5 text-indigo-600" />}
+                iconBg="bg-indigo-50"
+              />
             </div>
           </div>
 
-          {/* Recent Admissions */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-slate-800 text-base">Recent Admissions</h3>
-                <p className="text-xs text-slate-500">Newly registered students in the system</p>
-              </div>
-              <Link
-                href="/dashboard/students"
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center space-x-1"
-              >
-                <span>View All</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+          {/* Attendance Action Banner */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-lg mb-1">Ready to take today's attendance?</h3>
+              <p className="text-sm text-slate-500">Select your class and record daily attendance entries in seconds.</p>
             </div>
-
-            {loading ? (
-              <div className="py-8 text-center text-slate-400 text-sm">Loading recent admissions...</div>
-            ) : recentStudents.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-sm">No recent admissions found</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase font-bold">
-                      <th className="pb-3 px-2">Student Name</th>
-                      <th className="pb-3 px-2">Roll No.</th>
-                      <th className="pb-3 px-2">Class</th>
-                      <th className="pb-3 px-2">Admission Date</th>
-                      <th className="pb-3 px-2 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {recentStudents.map((st) => (
-                      <tr key={st.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-3 px-2 font-semibold text-slate-800">{st.name}</td>
-                        <td className="py-3 px-2 font-mono text-xs text-slate-600">{st.roll_number || 'N/A'}</td>
-                        <td className="py-3 px-2 text-slate-600">{st.classes?.name || 'Unassigned'}</td>
-                        <td className="py-3 px-2 text-slate-500 text-xs">
-                          {st.admission_date ? new Date(st.admission_date).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td className="py-3 px-2 text-right">
-                          <Link
-                            href={`/dashboard/students/details?id=${st.id}`}
-                            className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg transition-colors"
-                          >
-                            <span>Details</span>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <Link
+              href="/dashboard/attendance/daily"
+              className="inline-flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-2xl shadow-lg shadow-purple-500/20 transition-all shrink-0 active:scale-95 text-sm"
+            >
+              <span>Take Attendance</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
         </div>

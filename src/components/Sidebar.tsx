@@ -130,10 +130,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navTabs = isStaff
     ? [
         { href: '/staff/dashboard', label: 'Home', icon: HomeGridIcon, active: isActive('/staff/dashboard') },
-        { href: '/dashboard/students', label: 'Students', icon: UsersIcon, active: isActive('/dashboard/students') },
-        { href: '/dashboard/admissions', label: 'Admit', icon: UserAddIcon, active: isParentActive(['/dashboard/admissions']) },
-        { href: '/dashboard/attendance/daily', label: 'Attend', icon: CalendarCheckIcon, active: isParentActive(['/dashboard/attendance']) },
-        { href: '/dashboard/notifications', label: 'Alerts', icon: BellIcon, active: isActive('/dashboard/notifications') },
+        { href: '/dashboard/attendance/daily', label: 'Attendance', icon: CalendarCheckIcon, active: isParentActive(['/dashboard/attendance']) },
       ]
     : [
         { href: '/dashboard', label: 'Home', icon: HomeGridIcon, active: isActive('/dashboard') },
@@ -216,49 +213,53 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </Link>
             </li>
 
-            <li>
-              <Link href="/dashboard/students" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/students')
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                }`} onClick={onClose}>
-                <UserIcon className="w-5 h-5" />
-                <span className="font-medium">Students</span>
-              </Link>
-            </li>
+            {!isStaff && (
+              <li>
+                <Link href="/dashboard/students" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/students')
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                  }`} onClick={onClose}>
+                  <UserIcon className="w-5 h-5" />
+                  <span className="font-medium">Students</span>
+                </Link>
+              </li>
+            )}
 
-            <li>
-              <div className="flex flex-col">
-                <button
-                  onClick={() => setAdmissionOpen(!admissionOpen)}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/admissions')
-                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                    }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <UserAddIcon className="w-5 h-5" />
-                    <span className="font-medium">Admissions</span>
-                  </div>
-                  <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${admissionOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {admissionOpen && (
-                  <ul className="ml-6 mt-2 space-y-1">
-                    <li>
-                      <Link href="/dashboard/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
-                        <CalendarCheckIcon className="w-4 h-4" />
-                        <span>Overview</span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/dashboard/admissions/new" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
-                        <CalendarIcon className="w-4 h-4" />
-                        <span>New Admission</span>
-                      </Link>
-                    </li>
-                  </ul>
-                )}
-              </div>
-            </li>
+            {!isStaff && (
+              <li>
+                <div className="flex flex-col">
+                  <button
+                    onClick={() => setAdmissionOpen(!admissionOpen)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/admissions')
+                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                      }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <UserAddIcon className="w-5 h-5" />
+                      <span className="font-medium">Admissions</span>
+                    </div>
+                    <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${admissionOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {admissionOpen && (
+                    <ul className="ml-6 mt-2 space-y-1">
+                      <li>
+                        <Link href="/dashboard/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                          <CalendarCheckIcon className="w-4 h-4" />
+                          <span>Overview</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/admissions/new" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                          <CalendarIcon className="w-4 h-4" />
+                          <span>New Admission</span>
+                        </Link>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+              </li>
+            )}
 
             {/* Attendance Dropdown */}
             <li>
@@ -354,27 +355,31 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </li>
             )}
 
-            {/* Tests */}
-            <li>
-              <Link href="/dashboard/tests" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/tests')
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                }`} onClick={onClose}>
-                <TestsIcon className="w-5 h-5" />
-                <span className="font-medium">Tests & Results</span>
-              </Link>
-            </li>
+            {/* Tests - Restricted for Staff */}
+            {!isStaff && (
+              <li>
+                <Link href="/dashboard/tests" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/tests')
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                  }`} onClick={onClose}>
+                  <TestsIcon className="w-5 h-5" />
+                  <span className="font-medium">Tests & Results</span>
+                </Link>
+              </li>
+            )}
 
-            {/* Assignments */}
-            <li>
-              <Link href="/dashboard/assignments" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/assignments')
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                }`} onClick={onClose}>
-                <AssignmentsIcon className="w-5 h-5" />
-                <span className="font-medium">Assignments</span>
-              </Link>
-            </li>
+            {/* Assignments - Restricted for Staff */}
+            {!isStaff && (
+              <li>
+                <Link href="/dashboard/assignments" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/assignments')
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                  }`} onClick={onClose}>
+                  <AssignmentsIcon className="w-5 h-5" />
+                  <span className="font-medium">Assignments</span>
+                </Link>
+              </li>
+            )}
 
             {/* Reports Dropdown - Restricted for Staff */}
             {!isStaff && (
@@ -411,15 +416,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </li>
             )}
 
-            <li>
-              <Link href="/dashboard/notifications" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/notifications')
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                }`} onClick={onClose}>
-                <BellIcon className="w-5 h-5" />
-                <span className="font-medium">Smart Notifications</span>
-              </Link>
-            </li>
+            {!isStaff && (
+              <li>
+                <Link href="/dashboard/notifications" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/notifications')
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                  }`} onClick={onClose}>
+                  <BellIcon className="w-5 h-5" />
+                  <span className="font-medium">Smart Notifications</span>
+                </Link>
+              </li>
+            )}
 
             {/* Settings Dropdown - Restricted for Staff */}
             {!isStaff && (
