@@ -13,6 +13,7 @@ import { FeeTimeline } from '../../../../components/FeeTimeline'
 import { RecordPayment } from '../../../../components/RecordPayment'
 import { PromoteStudent } from '../../../../components/PromoteStudent'
 import { getStudentDetailsWithFees } from '../../../../lib/supabase/queries'
+import { getAdminProfile } from '../../../../lib/supabase/auth'
 
 interface Student {
   id: string
@@ -50,6 +51,17 @@ function StudentDetailsContent() {
   const [studentId, setStudentId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string>('admin')
+
+  useEffect(() => {
+    async function loadRole() {
+      const { data } = await getAdminProfile()
+      if (data?.role) setUserRole(data.role)
+    }
+    loadRole()
+  }, [])
+
+  const isStaff = userRole === 'staff' || userRole === 'teacher'
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -267,31 +279,33 @@ function StudentDetailsContent() {
               </div>
             </Card>
 
-            {/* Summary Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <Card>
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-sm font-medium text-gray-600">Total Pending Months</h3>
-                  <p className="text-2xl font-semibold text-red-600 mt-2">{student.totalPendingMonths}</p>
-                </div>
-              </Card>
+            {/* Summary Metrics - Only for Admin */}
+            {!isStaff && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-sm font-medium text-gray-600">Total Pending Months</h3>
+                    <p className="text-2xl font-semibold text-red-600 mt-2">{student.totalPendingMonths}</p>
+                  </div>
+                </Card>
 
-              <Card>
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-sm font-medium text-gray-600">Pending Amount</h3>
-                  <p className="text-2xl font-semibold text-red-600 mt-2">{formatCurrency(student.pendingAmount)}</p>
-                </div>
-              </Card>
+                <Card>
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-sm font-medium text-gray-600">Pending Amount</h3>
+                    <p className="text-2xl font-semibold text-red-600 mt-2">{formatCurrency(student.pendingAmount)}</p>
+                  </div>
+                </Card>
 
-              <Card>
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-sm font-medium text-gray-600">Total Paid</h3>
-                  <p className="text-2xl font-semibold text-green-600 mt-2">{formatCurrency(student.totalPaid)}</p>
-                </div>
-              </Card>
-            </div>
+                <Card>
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-sm font-medium text-gray-600">Total Paid</h3>
+                    <p className="text-2xl font-semibold text-green-600 mt-2">{formatCurrency(student.totalPaid)}</p>
+                  </div>
+                </Card>
+              </div>
+            )}
 
-            {student.pendingMonths.length > 0 && (
+            {!isStaff && student.pendingMonths.length > 0 && (
               <Card className="mb-6 border-red-200 bg-red-50">
                 <div className="p-4 sm:p-6">
                   <h3 className="text-sm font-medium text-red-800 mb-2">Pending Months</h3>
@@ -302,15 +316,17 @@ function StudentDetailsContent() {
               </Card>
             )}
 
-            {/* Fee Timeline */}
-            <FeeTimeline 
-              key={refreshKey}
-              studentId={student.id} 
-              admissionDate={student.admission_date}
-              monthlyFee={student.monthly_fee}
-              studentStatus={student.status}
-              isActive={student.is_active}
-            />
+            {/* Fee Timeline - Only for Admin */}
+            {!isStaff && (
+              <FeeTimeline 
+                key={refreshKey}
+                studentId={student.id} 
+                admissionDate={student.admission_date}
+                monthlyFee={student.monthly_fee}
+                studentStatus={student.status}
+                isActive={student.is_active}
+              />
+            )}
 
             {/* Attendance Calendar */}
             <AttendanceCalendar studentId={student.id} />

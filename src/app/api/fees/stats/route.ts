@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's organization_id
+    // Get user's organization_id & role
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('user_id', user.id)
       .single();
 
@@ -56,6 +56,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 }
+      );
+    }
+
+    if (userData.role === 'staff' || userData.role === 'teacher') {
+      return NextResponse.json(
+        { error: 'Access Denied: Staff users do not have permission to access fee statistics' },
+        { status: 403 }
       );
     }
 

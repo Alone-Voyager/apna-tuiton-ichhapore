@@ -205,11 +205,13 @@ export async function POST(request: NextRequest) {
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] admin_profiles result: found=${!!adminProfile}, error=${adminErr?.message || 'none'}`);
 
     if (adminProfile) {
-      if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Admin login successful - role=${adminProfile.role}, redirect=/dashboard`);
+      const userRole = adminProfile.role || 'admin';
+      const redirectPath = (userRole === 'staff' || userRole === 'teacher') ? '/staff/dashboard' : '/dashboard';
+      if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Login successful - role=${userRole}, redirect=${redirectPath}`);
       const roleResponse = NextResponse.json({
         success: true,
-        role: adminProfile.role,
-        redirect: '/dashboard',
+        role: userRole,
+        redirect: redirectPath,
       });
       response.cookies.getAll().forEach(cookie => {
         roleResponse.cookies.set(cookie.name, cookie.value);

@@ -48,10 +48,10 @@ export async function DELETE(
       );
     }
 
-    // Get user's organization_id from the admin_profiles table
+    // Get user's organization_id & role from the admin_profiles table
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id, id')
+      .select('organization_id, id, role')
       .eq('user_id', user.id)
       .single();
 
@@ -60,6 +60,13 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 }
+      );
+    }
+
+    if (userData.role === 'staff' || userData.role === 'teacher') {
+      return NextResponse.json(
+        { error: 'Access Denied: Staff users do not have permission to delete students' },
+        { status: 403 }
       );
     }
 

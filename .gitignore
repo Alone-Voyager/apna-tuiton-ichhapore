@@ -71,6 +71,9 @@ update_student.js
 
 # built APK files
 *.apk
+.gradle/
+android-sdk/
+jdk21/
 
 # api-server-backend (sub-project ignores)
 api-server-backend/.next/

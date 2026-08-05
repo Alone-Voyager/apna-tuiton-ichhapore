@@ -6,6 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import { getAdminProfile } from '../../../lib/supabase/auth';
 import { Button } from '../../../components/ui/button';
 import StudentDetailModal from '../../../components/StudentDetailModal';
 import { sortClassesByStandardOrder, getSuggestedNextClassName, type Class as ClassType } from '../../../lib/utils/classOrdering';
@@ -175,6 +176,18 @@ export default function StudentsClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedClass = searchParams?.get('class') ?? null;
+
+  const [userRole, setUserRole] = useState<string>('admin');
+
+  useEffect(() => {
+    async function loadRole() {
+      const { data } = await getAdminProfile();
+      if (data?.role) setUserRole(data.role);
+    }
+    loadRole();
+  }, []);
+
+  const isStaffUser = userRole === 'staff' || userRole === 'teacher';
 
   // Fetch classes on component mount
   useEffect(() => {
@@ -796,13 +809,15 @@ export default function StudentsClient() {
                               >
                                 <Eye className="text-slate-600 w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => confirmDeleteStudent(student)}
-                                className="p-1 hover:bg-red-50 rounded"
-                                title="Delete Student"
-                              >
-                                <Trash2 className="text-red-600 w-4 h-4" />
-                              </button>
+                              {!isStaffUser && (
+                                <button
+                                  onClick={() => confirmDeleteStudent(student)}
+                                  className="p-1 hover:bg-red-50 rounded"
+                                  title="Delete Student"
+                                >
+                                  <Trash2 className="text-red-600 w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1113,13 +1128,15 @@ export default function StudentsClient() {
                                 >
                                   <Eye className="text-slate-600 w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => confirmDeleteStudent(student, true)}
-                                  className="p-1 hover:bg-red-50 rounded"
-                                  title="Delete Student Permanently"
-                                >
-                                  <Trash2 className="text-red-600 w-4 h-4" />
-                                </button>
+                                {!isStaffUser && (
+                                  <button
+                                    onClick={() => confirmDeleteStudent(student, true)}
+                                    className="p-1 hover:bg-red-50 rounded"
+                                    title="Delete Student Permanently"
+                                  >
+                                    <Trash2 className="text-red-600 w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
