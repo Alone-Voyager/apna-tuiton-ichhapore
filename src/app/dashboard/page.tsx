@@ -6,6 +6,7 @@ import StatsCard from '../../components/StatsCard';
 import Link from 'next/link';
 import { FeeCollectionReport } from '../../components/fee-collection-report';
 import { ActivityFeed } from '../../components/activity-feed';
+import RevenueAnalytics from '../../components/RevenueAnalytics';
 
 interface DashboardStats {
   totalStudents: number;
@@ -110,6 +111,11 @@ export default function DashboardPage() {
         <Link href="/dashboard/attendance/daily" className="block active:scale-95 transition-transform">
           <StatsCard title="Today's Attendance" value={loading ? '...' : `${stats.presentCount}/${stats.totalAttendanceRecords}`} subtitle="Click to view" icon={<CalendarCheck className="w-5 h-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         </Link>
+      </div>
+
+      {/* Month-Wise Expected & Collected Revenue Analytics Section */}
+      <div>
+        <RevenueAnalytics refreshTrigger={0} />
       </div>
 
       {/* Fee Collection Report */}

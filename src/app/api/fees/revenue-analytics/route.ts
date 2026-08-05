@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       totalStudents: number;
       paidStudents: number;
       unpaidStudents: number;
+      expectedRevenue: number;
       revenueCollected: number;
       outstandingRevenue: number;
     }>();
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
           totalStudents: 0,
           paidStudents: 0,
           unpaidStudents: 0,
+          expectedRevenue: 0,
           revenueCollected: 0,
           outstandingRevenue: 0
         });
@@ -87,9 +89,9 @@ export async function GET(request: NextRequest) {
       const stats = getOrCreateStats(p.payment_month);
       stats.unpaidStudents += 1;
       stats.totalStudents += 1;
-      // Partial payments contribute both to collected revenue and outstanding dues
       const paid = Number(p.paid_amount || 0);
       const amount = Number(p.amount || 0);
+      stats.expectedRevenue += amount;
       stats.revenueCollected += paid;
       stats.outstandingRevenue += (amount - paid);
     }
@@ -99,7 +101,10 @@ export async function GET(request: NextRequest) {
       const stats = getOrCreateStats(h.payment_month);
       stats.paidStudents += 1;
       stats.totalStudents += 1;
-      stats.revenueCollected += Number(h.paid_amount || h.amount || 0);
+      const amount = Number(h.amount || h.paid_amount || 0);
+      const paid = Number(h.paid_amount || h.amount || 0);
+      stats.expectedRevenue += amount;
+      stats.revenueCollected += paid;
     }
 
     // Convert map to array and compute averages
@@ -113,6 +118,7 @@ export async function GET(request: NextRequest) {
         totalStudents: stats.totalStudents,
         paidStudents: stats.paidStudents,
         unpaidStudents: stats.unpaidStudents,
+        expectedRevenue: Math.round(stats.expectedRevenue),
         revenueCollected: Math.round(stats.revenueCollected),
         outstandingRevenue: Math.round(stats.outstandingRevenue),
         collectionRate

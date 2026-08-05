@@ -26,16 +26,17 @@ interface AnalyticsData {
   totalStudents: number;
   paidStudents: number;
   unpaidStudents: number;
+  expectedRevenue: number;
   revenueCollected: number;
   outstandingRevenue: number;
   collectionRate: number;
 }
 
 interface RevenueAnalyticsProps {
-  refreshTrigger: number;
+  refreshTrigger?: number;
 }
 
-export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsProps) {
+export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalyticsProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -87,6 +88,7 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
     totalStudents: 0,
     paidStudents: 0,
     unpaidStudents: 0,
+    expectedRevenue: 0,
     revenueCollected: 0,
     outstandingRevenue: 0,
     collectionRate: 0
@@ -94,7 +96,7 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
 
   if (loading && analytics.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px]">
+      <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[300px]">
         <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
         <p className="text-slate-600 font-medium">Loading revenue analytics...</p>
       </div>
@@ -103,7 +105,7 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
 
   if (error) {
     return (
-      <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] flex flex-col items-center justify-center">
+      <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[300px] flex flex-col items-center justify-center">
         <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
         <p className="text-red-600 font-semibold mb-4">{error}</p>
         <button
@@ -123,9 +125,9 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
         <div>
           <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-indigo-600" />
-            Monthly Revenue Analytics
+            Month-Wise Expected &amp; Collected Revenue
           </h2>
-          <p className="text-slate-500 text-sm mt-0.5">Analyze collected and outstanding fees based on billing cycle month.</p>
+          <p className="text-slate-500 text-sm mt-0.5">Track month-by-month expected targets, collected income, and pending dues.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
@@ -145,18 +147,33 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
       </div>
 
       {/* Main KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Revenue Card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Expected Revenue Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+          <div className="absolute -right-4 -bottom-4 bg-blue-500/10 w-24 h-24 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-xs font-bold text-blue-600/80 uppercase tracking-wider mb-1">Expected Revenue</p>
+              <p className="text-3xl font-black text-blue-700">₹{(selectedStats.expectedRevenue || 0).toLocaleString()}</p>
+              <p className="text-xs text-blue-600 mt-2 font-medium">Monthly Target for {selectedStats.month}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full text-blue-700">
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Collected Revenue Card */}
         <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 bg-emerald-500/10 w-24 h-24 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-emerald-600/80 uppercase tracking-wider mb-1">Revenue Collected</p>
-              <p className="text-3xl font-black text-emerald-700">₹{selectedStats.revenueCollected.toLocaleString()}</p>
-              <p className="text-xs text-emerald-600 mt-2 font-medium">For billing month {selectedStats.month}</p>
+              <p className="text-3xl font-black text-emerald-700">₹{(selectedStats.revenueCollected || 0).toLocaleString()}</p>
+              <p className="text-xs text-emerald-600 mt-2 font-medium">Collected for {selectedStats.month}</p>
             </div>
             <div className="bg-emerald-100 p-3 rounded-full text-emerald-700">
-              <DollarSign className="w-6 h-6" />
+              <CheckCircle className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -167,7 +184,7 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-rose-600/80 uppercase tracking-wider mb-1">Outstanding Revenue</p>
-              <p className="text-3xl font-black text-rose-700">₹{selectedStats.outstandingRevenue.toLocaleString()}</p>
+              <p className="text-3xl font-black text-rose-700">₹{(selectedStats.outstandingRevenue || 0).toLocaleString()}</p>
               <p className="text-xs text-rose-600 mt-2 font-medium">Remaining to collect</p>
             </div>
             <div className="bg-rose-100 p-3 rounded-full text-rose-700">
@@ -177,38 +194,16 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
         </div>
 
         {/* Collection Rate Card */}
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+        <div className="bg-gradient-to-br from-indigo-50 to-slate-50 border border-indigo-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="absolute -right-4 -bottom-4 bg-indigo-500/10 w-24 h-24 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-indigo-600/80 uppercase tracking-wider mb-1">Collection Rate</p>
               <p className="text-3xl font-black text-indigo-700">{selectedStats.collectionRate}%</p>
-              <p className="text-xs text-indigo-600 mt-2 font-medium">Paid vs Total Students</p>
+              <p className="text-xs text-indigo-600 mt-2 font-medium">{selectedStats.paidStudents}/{selectedStats.totalStudents} Students Paid</p>
             </div>
             <div className="bg-indigo-100 p-3 rounded-full text-indigo-700">
               <TrendingUp className="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-
-        {/* Student Metrics Card */}
-        <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          <div className="absolute -right-4 -bottom-4 bg-slate-500/10 w-24 h-24 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-          <div className="flex items-center justify-between relative z-10">
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Student Statuses</p>
-              <p className="text-3xl font-black text-slate-700">{selectedStats.totalStudents}</p>
-              <div className="flex items-center gap-3 mt-1.5 text-xs font-semibold">
-                <span className="text-emerald-600 flex items-center gap-0.5">
-                  <CheckCircle className="w-3.5 h-3.5" /> {selectedStats.paidStudents} Paid
-                </span>
-                <span className="text-rose-600 flex items-center gap-0.5">
-                  <AlertTriangle className="w-3.5 h-3.5" /> {selectedStats.unpaidStudents} Unpaid
-                </span>
-              </div>
-            </div>
-            <div className="bg-slate-200 p-3 rounded-full text-slate-600">
-              <Users2 className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -217,8 +212,8 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
       {/* Chart Section */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="mb-6">
-          <h3 className="text-lg font-extrabold text-slate-800">Monthly Revenue Comparison</h3>
-          <p className="text-slate-500 text-xs mt-0.5">Compare collected revenue vs outstanding dues side-by-side chronologically.</p>
+          <h3 className="text-lg font-extrabold text-slate-800">Month-Wise Revenue Comparison Chart</h3>
+          <p className="text-slate-500 text-xs mt-0.5">Compare Expected Revenue vs Collected Revenue vs Outstanding Dues side-by-side chronologically.</p>
         </div>
 
         <div className="h-[350px] w-full">
@@ -262,6 +257,12 @@ export default function RevenueAnalytics({ refreshTrigger }: RevenueAnalyticsPro
                   iconType="circle"
                   iconSize={8}
                   wrapperStyle={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}
+                />
+                <Bar 
+                  name="Expected Revenue" 
+                  dataKey="expectedRevenue" 
+                  fill="#3B82F6" 
+                  radius={[4, 4, 0, 0]} 
                 />
                 <Bar 
                   name="Collected Revenue" 
