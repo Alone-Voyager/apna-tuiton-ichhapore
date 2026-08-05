@@ -13,6 +13,43 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
+  const [createStaffLoading, setCreateStaffLoading] = useState(false);
+  const [createStaffError, setCreateStaffError] = useState('');
+  const [staffForm, setStaffForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    phone: '',
+    role: 'staff',
+  });
+
+  const handleCreateStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateStaffError('');
+    setCreateStaffLoading(true);
+
+    try {
+      const res = await fetch('/api/admin-profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(staffForm),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to create staff account');
+      }
+
+      setStaffForm({ fullName: '', email: '', password: '', phone: '', role: 'staff' });
+      setShowCreateStaffModal(false);
+      fetchAdminProfiles();
+    } catch (err: any) {
+      setCreateStaffError(err.message || 'Failed to create staff member');
+    } finally {
+      setCreateStaffLoading(false);
+    }
+  };
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -225,11 +262,118 @@ export default function Settings() {
       <div className="bg-white border border-slate-200 rounded-lg p-4 lg:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <h3 className="text-base lg:text-lg font-semibold text-slate-800">Team Members</h3>
-          {/* <Button className="sm:w-auto">
+          <Button onClick={() => setShowCreateStaffModal(true)} className="sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold">
             <UserPlus className="mr-2 w-4 h-4" />
-            Add User
-          </Button> */}
+            Add Staff Member
+          </Button>
         </div>
+
+        {/* Modal: Create New Staff Member */}
+        {showCreateStaffModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 relative">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-800">Add New Staff Member</h3>
+                  <p className="text-xs text-slate-500 font-medium">Create staff login credentials & assign access role</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStaffModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {createStaffError && (
+                <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-2xl text-xs font-semibold border border-red-100">
+                  {createStaffError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateStaffSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={staffForm.fullName}
+                    onChange={(e) => setStaffForm({ ...staffForm, fullName: e.target.value })}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email / Username</label>
+                  <input
+                    type="email"
+                    required
+                    value={staffForm.email}
+                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                    placeholder="e.g. staff@apnatuition.com"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    value={staffForm.phone}
+                    onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Initial Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={staffForm.password}
+                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                    placeholder="At least 6 characters"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Role & Permissions</label>
+                  <select
+                    value={staffForm.role}
+                    onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                  >
+                    <option value="staff">Staff Member (Admissions & Attendance Access)</option>
+                    <option value="teacher">Teacher (Attendance & Assignments Access)</option>
+                    <option value="admin">Administrator (Full System Access)</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateStaffModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createStaffLoading}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50"
+                  >
+                    {createStaffLoading ? 'Creating Account...' : 'Create Staff Member'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {loadingProfiles ? (
           <div className="text-center py-8 text-slate-600">Loading team members...</div>
