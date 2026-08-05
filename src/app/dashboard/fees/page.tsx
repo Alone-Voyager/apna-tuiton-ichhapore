@@ -59,6 +59,7 @@ interface StatsData {
   partialCount: number;
   totalFees: number;
   collectedFees: number;
+  expectedMonthlyRevenue?: number;
   currentMonth: string;
 }
 
@@ -202,7 +203,8 @@ function FeesPageContent() {
     overdueCount: 0,
     partialCount: 0,
     totalFees: 0,
-    collectedFees: 0
+    collectedFees: 0,
+    expectedMonthlyRevenue: 0
   };
 
   const selectedClassData = classesData.find(cls => cls.name === selectedClass);
@@ -465,14 +467,28 @@ function FeesPageContent() {
           {activeSubView === 'overview' ? (
             <>
               {/* Stats Overview */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden transition-all hover:shadow-md col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between relative z-10">
+                <div>
+                  <p className="text-[10px] sm:text-xs font-bold text-blue-600/80 uppercase tracking-wider mb-1">Expected Revenue</p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-blue-700">₹{(totalStats.expectedMonthlyRevenue || 0).toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-blue-500 font-semibold mt-0.5">Target Monthly Income</p>
+                </div>
+                <div className="bg-blue-100 p-2 sm:p-3 rounded-full shrink-0">
+                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
               <div className="flex items-center justify-between relative z-10">
                 <div>
-                  <p className="text-[10px] sm:text-xs font-bold text-indigo-600/80 uppercase tracking-wider mb-1">Total Students</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-indigo-600/80 uppercase tracking-wider mb-1">Total Active</p>
                   <p className="text-2xl sm:text-3xl font-extrabold text-indigo-700">{totalStats.totalStudents}</p>
+                  <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">Active Students</p>
                 </div>
-                <div className="bg-indigo-100 p-2 sm:p-3 rounded-full">
+                <div className="bg-indigo-100 p-2 sm:p-3 rounded-full shrink-0">
                   <Users2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
                 </div>
               </div>
@@ -483,8 +499,9 @@ function FeesPageContent() {
                 <div>
                   <p className="text-[10px] sm:text-xs font-bold text-emerald-600/80 uppercase tracking-wider mb-1">Paid</p>
                   <p className="text-2xl sm:text-3xl font-extrabold text-emerald-700">{totalStats.paidCount}</p>
+                  <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">Students Paid</p>
                 </div>
-                <div className="bg-emerald-100 p-2 sm:p-3 rounded-full">
+                <div className="bg-emerald-100 p-2 sm:p-3 rounded-full shrink-0">
                   <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                 </div>
               </div>
@@ -495,9 +512,10 @@ function FeesPageContent() {
                 <div>
                   <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Unpaid</p>
                   <p className="text-2xl sm:text-3xl font-extrabold text-slate-700">{totalStats.unpaidCount}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Pending Month</p>
                 </div>
-                <div className="bg-slate-200 p-2 sm:p-3 rounded-full">
-                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600" />
+                <div className="bg-slate-200 p-2 sm:p-3 rounded-full shrink-0">
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600" />
                 </div>
               </div>
             </div>
@@ -507,8 +525,9 @@ function FeesPageContent() {
                 <div>
                   <p className="text-[10px] sm:text-xs font-bold text-rose-600/80 uppercase tracking-wider mb-1">Overdue</p>
                   <p className="text-2xl sm:text-3xl font-extrabold text-rose-700">{totalStats.overdueCount}</p>
+                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5">Overdue Payments</p>
                 </div>
-                <div className="bg-red-100 p-2 sm:p-3 rounded-full">
+                <div className="bg-red-100 p-2 sm:p-3 rounded-full shrink-0">
                   <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                 </div>
               </div>

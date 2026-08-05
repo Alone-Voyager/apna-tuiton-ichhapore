@@ -91,6 +91,29 @@ export async function GET(request: NextRequest) {
       0
     ) || 0;
 
+    // 5. Calculate Expected Monthly Revenue (Sum of monthly_fee for all active students)
+    const { data: activeStudents, error: expectedRevenueErr } = await supabase
+      .from('students')
+      .select('monthly_fee, status, is_active')
+      .eq('organization_id', organizationId);
+
+    if (expectedRevenueErr) {
+      console.error('Error fetching active students for expected revenue:', expectedRevenueErr);
+    }
+
+    const isStudentActive = (s: any) => {
+      const isDeleted = s.status === 'inactive' || s.status === 'deleted' || s.status === 'archived' || s.status === 'suspended';
+      const isExplicitlyInactive = s.is_active === false;
+      return !isDeleted && !isExplicitlyInactive;
+    };
+
+    const expectedMonthlyRevenue = activeStudents?.reduce((sum: number, student: any) => {
+      if (isStudentActive(student)) {
+        return sum + Number(student.monthly_fee || 0);
+      }
+      return sum;
+    }, 0) || 0;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -100,6 +123,7 @@ export async function GET(request: NextRequest) {
         totalAttendanceRecords: totalActiveStudents, // Total active students
         onLeaveCount: onLeaveCount || 0,
         totalOutstanding: Math.round(totalOutstanding),
+        expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
       },
     });
   } catch (error) {

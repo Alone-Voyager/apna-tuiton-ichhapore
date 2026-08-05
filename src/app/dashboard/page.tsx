@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react';
 import ConsecutiveLeaveMonitor from '../../components/ConsecutiveLeaveMonitor';
-import { Upload, Users2, CalendarCheck, Bell, User, Wallet } from 'lucide-react';
+import { Upload, Users2, CalendarCheck, Bell, User, Wallet, TrendingUp } from 'lucide-react';
 import StatsCard from '../../components/StatsCard';
 import Link from 'next/link';
 import { FeeCollectionReport } from '../../components/fee-collection-report';
@@ -14,6 +14,7 @@ interface DashboardStats {
   totalAttendanceRecords: number;
   onLeaveCount: number;
   totalOutstanding: number;
+  expectedMonthlyRevenue: number;
 }
 
 export default function DashboardPage() {
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     totalAttendanceRecords: 0,
     onLeaveCount: 0,
     totalOutstanding: 0,
+    expectedMonthlyRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -95,12 +97,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Link href="/dashboard/fees" className="block active:scale-95 transition-transform">
+          <StatsCard title="Expected Revenue" value={loading ? '...' : `₹${stats.expectedMonthlyRevenue.toLocaleString('en-IN')}`} subtitle="Expected Monthly Income" icon={<TrendingUp className="w-5 h-5 text-blue-600" />} iconBg="bg-blue-50" />
+        </Link>
         <Link href="/dashboard/students" className="block active:scale-95 transition-transform">
-          <StatsCard title="Registered" value={loading ? '...' : stats.totalStudents.toString()} subtitle="Total Students" icon={<User className="w-5 h-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+          <StatsCard title="Registered" value={loading ? '...' : stats.totalStudents.toString()} subtitle="Active Students" icon={<User className="w-5 h-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         </Link>
         <Link href="/dashboard/fees" className="block active:scale-95 transition-transform">
-          <StatsCard title="Outstanding" value={loading ? '...' : `₹${stats.totalOutstanding.toLocaleString('en-IN')}`} subtitle="Total Pending" icon={<Wallet className="w-5 h-5 text-rose-600" />} iconBg="bg-rose-50" />
+          <StatsCard title="Outstanding" value={loading ? '...' : `₹${stats.totalOutstanding.toLocaleString('en-IN')}`} subtitle="Total Pending Dues" icon={<Wallet className="w-5 h-5 text-rose-600" />} iconBg="bg-rose-50" />
         </Link>
         <Link href="/dashboard/attendance/daily" className="block active:scale-95 transition-transform">
           <StatsCard title="Today's Attendance" value={loading ? '...' : `${stats.presentCount}/${stats.totalAttendanceRecords}`} subtitle="Click to view" icon={<CalendarCheck className="w-5 h-5 text-emerald-600" />} iconBg="bg-emerald-50" />

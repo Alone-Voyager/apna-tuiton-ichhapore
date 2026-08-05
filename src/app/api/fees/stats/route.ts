@@ -483,6 +483,12 @@ export async function GET(request: NextRequest) {
       students: Array.from(classData.students.values()),
     }));
 
+    // Calculate expected monthly revenue from active students
+    const expectedMonthlyRevenue = allStudents?.filter(isStudentActive).reduce(
+      (sum, s) => sum + Number(s.monthly_fee || 0),
+      0
+    ) || 0;
+
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
       stats: {
@@ -493,6 +499,7 @@ export async function GET(request: NextRequest) {
         partialCount,
         totalFees,
         collectedFees,
+        expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
         currentMonth: filterMonth,
       },
       classes: classesData,
