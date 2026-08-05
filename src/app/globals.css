@@ -178,3 +178,30 @@
     user-select: auto;
   }
 }
+
+/* Printable Certificate & Fee Receipt Media Styles */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .printable-preview,
+  .printable-preview * {
+    visibility: visible !important;
+  }
+  .printable-preview {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: 99999 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

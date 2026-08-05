@@ -18,6 +18,7 @@ import {
   Clock as TimeIcon,
   CheckCircle as CheckCircleIcon,
   FileText as ReportsIcon,
+  FileText as FileTextIcon,
   Bell as BellIcon,
   Settings as SettingsIcon,
   Zap as AutomationIcon,
@@ -130,7 +131,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navTabs = isStaff
     ? [
         { href: '/staff/dashboard', label: 'Home', icon: HomeGridIcon, active: isActive('/staff/dashboard') },
-        { href: '/dashboard/attendance/daily', label: 'Attendance', icon: CalendarCheckIcon, active: isParentActive(['/dashboard/attendance']) },
+        { href: '/dashboard/admissions', label: 'Admissions', icon: UserAddIcon, active: isParentActive(['/dashboard/admissions']) },
+        { href: '/dashboard/attendance/daily', label: 'Attend', icon: CalendarCheckIcon, active: isParentActive(['/dashboard/attendance']) },
+        { href: '/staff/records', label: 'Records', icon: FileTextIcon, active: isParentActive(['/staff/records']) },
       ]
     : [
         { href: '/dashboard', label: 'Home', icon: HomeGridIcon, active: isActive('/dashboard') },
@@ -214,41 +217,51 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </li>
             )}
 
-            {!isStaff && (
-              <li>
-                <div className="flex flex-col">
-                  <button
-                    onClick={() => setAdmissionOpen(!admissionOpen)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/admissions')
-                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
-                      }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <UserAddIcon className="w-5 h-5" />
-                      <span className="font-medium">Admissions</span>
-                    </div>
-                    <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${admissionOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {admissionOpen && (
-                    <ul className="ml-6 mt-2 space-y-1">
-                      <li>
-                        <Link href="/dashboard/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
-                          <CalendarCheckIcon className="w-4 h-4" />
-                          <span>Overview</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/admissions/new" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
-                          <CalendarIcon className="w-4 h-4" />
-                          <span>New Admission</span>
-                        </Link>
-                      </li>
-                    </ul>
-                  )}
-                </div>
-              </li>
-            )}
+            {/* Admissions Dropdown */}
+            <li>
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setAdmissionOpen(!admissionOpen)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-300 group ${isActive('/dashboard/admissions')
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                    }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <UserAddIcon className="w-5 h-5" />
+                    <span className="font-medium">Admissions</span>
+                  </div>
+                  <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-300 ${admissionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {admissionOpen && (
+                  <ul className="ml-6 mt-2 space-y-1">
+                    <li>
+                      <Link href="/dashboard/admissions" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                        <CalendarCheckIcon className="w-4 h-4" />
+                        <span>Overview</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/dashboard/admissions/new" className="flex items-center space-x-2 p-2 text-sm text-slate-400 hover:text-white rounded-lg" onClick={onClose}>
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>New Admission</span>
+                      </Link>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            </li>
+
+            {/* Admission & Fee Records */}
+            <li>
+              <Link href="/staff/records" className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 group ${isActive('/staff/records')
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800 hover:scale-105'
+                }`} onClick={onClose}>
+                <FileTextIcon className="w-5 h-5" />
+                <span className="font-medium">Admission &amp; Fee Records</span>
+              </Link>
+            </li>
 
             {/* Attendance Dropdown */}
             <li>

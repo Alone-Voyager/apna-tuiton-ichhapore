@@ -63,6 +63,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { module: 'attendance', action: 'create' },
     { module: 'attendance', action: 'edit' },
     { module: 'attendance', action: 'export' },
+    { module: 'admissions', action: 'view' },
+    { module: 'admissions', action: 'create' },
+    { module: 'admissions', action: 'edit' },
+    { module: 'fees', action: 'view' },
+    { module: 'fees', action: 'create' },
   ],
   teacher: [
     { module: 'attendance', action: 'view' },
@@ -111,7 +116,9 @@ export function canAccessRoute(role: string | null | undefined, pathname: string
   if (role === 'staff') {
     const allowedStaffPrefixes = [
       '/staff/dashboard',
+      '/staff/records',
       '/dashboard/attendance',
+      '/dashboard/admissions',
     ];
     const isAllowed = allowedStaffPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
     return isAllowed;

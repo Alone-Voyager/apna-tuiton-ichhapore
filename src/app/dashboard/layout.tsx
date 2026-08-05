@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     "/dashboard": { title: "Dashboard Overview" },
     "/staff/dashboard": { title: "Staff Dashboard", subtitle: "Record attendance & track daily stats" },
+    "/staff/records": { title: "Admission & Fee Records", subtitle: "Manage student admissions & record fee payments" },
     "/dashboard/students": { title: "Student Management", subtitle: "Manage student records" },
     "/dashboard/admissions": { title: "Admissions", subtitle: "Track enquiries & new admissions" },
     "/dashboard/admissions/new": { title: "New Admission", subtitle: "Add a new student" },
