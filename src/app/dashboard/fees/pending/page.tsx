@@ -2,8 +2,6 @@
 import { useState } from 'react';
 import { Users2, DollarSign, AlertTriangle, Clock, Search, User, HandCoins, FileText, X, Check } from 'lucide-react';
 
-import PendingStudentsReportCard from '../../../../components/PendingStudentsReportCard';
-
 interface Student {
   id: string;
   name: string;
@@ -188,11 +186,6 @@ export default function PendingFeesPage() {
           </div>
 
           <div className="p-2 sm:p-4 lg:p-6">
-            {/* Download Pending Students CSV Report Card */}
-            <div className="mb-6">
-              <PendingStudentsReportCard />
-            </div>
-
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
               <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-slate-200">
