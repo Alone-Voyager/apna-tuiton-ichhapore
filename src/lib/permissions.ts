@@ -68,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { module: 'admissions', action: 'edit' },
     { module: 'fees', action: 'view' },
     { module: 'fees', action: 'create' },
+    { module: 'fees', action: 'export' },
   ],
   teacher: [
     { module: 'attendance', action: 'view' },
