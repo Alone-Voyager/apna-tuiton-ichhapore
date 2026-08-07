@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     await syncAllStudentFeePayments(supabaseAdmin, organizationId, syncTargetDate);
 
     // 4. Fetch fee payments with student and class info
-    // Exclude deleted students only
+    // Exclude suspended, inactive, or deleted students
     const { data: rawPayments, error: queryError } = await supabaseAdmin
       .from('fee_payments')
       .select(`
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: queryError.message }, { status: 500 });
     }
 
-    // 5. Aggregate All Pending Fees & Pending Months per Student up to `toDate`
+    // 5. Aggregate Pending Fees & Months strictly by due_date <= toDate for active students
     interface MonthItem {
       monthName: string;
       dueDateStr: string;
@@ -128,29 +128,24 @@ export async function GET(request: NextRequest) {
     (rawPayments || []).forEach((p: any) => {
       const student = p.students;
 
-      // Ignore only deleted students (matching Dashboard logic)
-      if (!student || student.status === 'deleted') {
+      // STRICT RULE: Include ONLY Active students (exclude suspended, inactive, archived, or deleted)
+      if (!student || student.status !== 'active' || student.is_active === false) {
         return;
       }
 
-      // Determine month start and due date string
+      // STRICT RULE: Check actual due date <= toDate (e.g. 08/08/2026)
       let dueDateStr = p.due_date ? p.due_date.split('T')[0] : '';
-      let monthStartStr = '';
-
-      if (p.payment_month) {
+      if (!dueDateStr && p.payment_month) {
         try {
           const monthDate = new Date(p.payment_month + ' 1');
           if (!isNaN(monthDate.getTime())) {
-            monthStartStr = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split('T')[0];
+            // Default billing due date (15th of the month)
+            dueDateStr = new Date(monthDate.getFullYear(), monthDate.getMonth(), 15).toISOString().split('T')[0];
           }
         } catch (e) {}
       }
 
-      // A payment is due on or before `toDate` if either its payment month start OR its due date is <= toDate
-      const effectiveCheckDate = monthStartStr || dueDateStr;
-      const isDueOnOrBeforeToDate = effectiveCheckDate ? effectiveCheckDate <= toDate : true;
-
-      if (!isDueOnOrBeforeToDate) {
+      if (dueDateStr && dueDateStr > toDate) {
         return;
       }
 
@@ -173,7 +168,7 @@ export async function GET(request: NextRequest) {
         const existing = studentPendingMap.get(student.id)!;
         existing.totalPendingFees += pending;
         if (!existing.pendingMonthsList.some(m => m.monthName.toLowerCase() === monthName.toLowerCase())) {
-          existing.pendingMonthsList.push({ monthName, dueDateStr: dueDateStr || monthStartStr, pendingAmount: pending });
+          existing.pendingMonthsList.push({ monthName, dueDateStr, pendingAmount: pending });
         }
       } else {
         studentPendingMap.set(student.id, {
@@ -181,7 +176,7 @@ export async function GET(request: NextRequest) {
           studentName,
           parentNumber,
           classFees,
-          pendingMonthsList: [{ monthName, dueDateStr: dueDateStr || monthStartStr, pendingAmount: pending }],
+          pendingMonthsList: [{ monthName, dueDateStr, pendingAmount: pending }],
           totalPendingFees: pending,
         });
       }
