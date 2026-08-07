@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     await syncAllStudentFeePayments(supabaseAdmin, organizationId, syncTargetDate);
 
     // 4. Fetch fee payments with student and class info
-    // Filter only non-deleted, active students
+    // Exclude deleted students only
     const { data: rawPayments, error: queryError } = await supabaseAdmin
       .from('fee_payments')
       .select(`
@@ -128,29 +128,27 @@ export async function GET(request: NextRequest) {
     (rawPayments || []).forEach((p: any) => {
       const student = p.students;
 
-      // Ignore deleted, inactive, or archived students
-      if (!student || student.status === 'deleted' || student.is_active === false) {
+      // Ignore only deleted students (matching Dashboard logic)
+      if (!student || student.status === 'deleted') {
         return;
       }
 
-      // Check if due_date / payment_month is due on or before `toDate`
-      let isDueOnOrBeforeToDate = false;
+      // Determine month start and due date string
       let dueDateStr = p.due_date ? p.due_date.split('T')[0] : '';
+      let monthStartStr = '';
 
-      if (p.due_date) {
-        isDueOnOrBeforeToDate = dueDateStr <= toDate;
-      } else if (p.payment_month) {
+      if (p.payment_month) {
         try {
           const monthDate = new Date(p.payment_month + ' 1');
           if (!isNaN(monthDate.getTime())) {
-            const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split('T')[0];
-            dueDateStr = monthStart;
-            isDueOnOrBeforeToDate = monthStart <= toDate;
+            monthStartStr = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split('T')[0];
           }
-        } catch (e) {
-          // Ignore date parse errors
-        }
+        } catch (e) {}
       }
+
+      // A payment is due on or before `toDate` if either its payment month start OR its due date is <= toDate
+      const effectiveCheckDate = monthStartStr || dueDateStr;
+      const isDueOnOrBeforeToDate = effectiveCheckDate ? effectiveCheckDate <= toDate : true;
 
       if (!isDueOnOrBeforeToDate) {
         return;
@@ -174,9 +172,8 @@ export async function GET(request: NextRequest) {
       if (studentPendingMap.has(student.id)) {
         const existing = studentPendingMap.get(student.id)!;
         existing.totalPendingFees += pending;
-        // Avoid duplicate month entries if any
         if (!existing.pendingMonthsList.some(m => m.monthName.toLowerCase() === monthName.toLowerCase())) {
-          existing.pendingMonthsList.push({ monthName, dueDateStr, pendingAmount: pending });
+          existing.pendingMonthsList.push({ monthName, dueDateStr: dueDateStr || monthStartStr, pendingAmount: pending });
         }
       } else {
         studentPendingMap.set(student.id, {
@@ -184,7 +181,7 @@ export async function GET(request: NextRequest) {
           studentName,
           parentNumber,
           classFees,
-          pendingMonthsList: [{ monthName, dueDateStr, pendingAmount: pending }],
+          pendingMonthsList: [{ monthName, dueDateStr: dueDateStr || monthStartStr, pendingAmount: pending }],
           totalPendingFees: pending,
         });
       }
@@ -200,8 +197,6 @@ export async function GET(request: NextRequest) {
       });
 
     // 6. Generate CSV Content
-    // Exact Columns required:
-    // Class | Student's Name | Parent's Number | Class Fees | Pending Month | Total Pending Fees
     const csvHeaders = ['Class', "Student's Name", "Parent's Number", 'Class Fees', 'Pending Month', 'Total Pending Fees'];
 
     const formatCurrency = (amount: number) => {
@@ -219,7 +214,7 @@ export async function GET(request: NextRequest) {
     const csvRows = [
       csvHeaders.map(escapeCsv).join(','),
       ...aggregatedList.map((row) => {
-        // Sort student's pending months chronologically by due date
+        // Sort student's pending months chronologically
         row.pendingMonthsList.sort((a, b) => (a.dueDateStr || '').localeCompare(b.dueDateStr || ''));
         const pendingMonthsJoined = row.pendingMonthsList.map(m => m.monthName).join(', ');
 
