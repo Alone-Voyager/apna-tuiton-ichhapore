@@ -107,13 +107,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: queryError.message }, { status: 500 });
     }
 
-    // 5. Aggregate Pending Fees & Pending Months per Student
+    // 5. Aggregate All Pending Fees & Pending Months per Student up to `toDate`
+    interface MonthItem {
+      monthName: string;
+      dueDateStr: string;
+      pendingAmount: number;
+    }
+
     interface StudentPendingAgg {
       className: string;
       studentName: string;
       parentNumber: string;
       classFees: number;
-      pendingMonthsMap: Map<string, number>; // Month Name -> Pending Amount
+      pendingMonthsList: MonthItem[];
       totalPendingFees: number;
     }
 
@@ -127,29 +133,26 @@ export async function GET(request: NextRequest) {
         return;
       }
 
-      // Check if due_date / payment_month is within selected date range [fromDate, toDate]
-      let isWithinDateRange = false;
+      // Check if due_date / payment_month is due on or before `toDate`
+      let isDueOnOrBeforeToDate = false;
+      let dueDateStr = p.due_date ? p.due_date.split('T')[0] : '';
 
       if (p.due_date) {
-        const dueStr = p.due_date.split('T')[0];
-        isWithinDateRange = dueStr >= fromDate && dueStr <= toDate;
-      }
-
-      // Fallback: Check payment_month if due_date is absent or outside range
-      if (!isWithinDateRange && p.payment_month) {
+        isDueOnOrBeforeToDate = dueDateStr <= toDate;
+      } else if (p.payment_month) {
         try {
           const monthDate = new Date(p.payment_month + ' 1');
           if (!isNaN(monthDate.getTime())) {
             const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split('T')[0];
-            const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).toISOString().split('T')[0];
-            isWithinDateRange = monthEnd >= fromDate && monthStart <= toDate;
+            dueDateStr = monthStart;
+            isDueOnOrBeforeToDate = monthStart <= toDate;
           }
         } catch (e) {
           // Ignore date parse errors
         }
       }
 
-      if (!isWithinDateRange) {
+      if (!isDueOnOrBeforeToDate) {
         return;
       }
 
@@ -171,20 +174,17 @@ export async function GET(request: NextRequest) {
       if (studentPendingMap.has(student.id)) {
         const existing = studentPendingMap.get(student.id)!;
         existing.totalPendingFees += pending;
-        if (!existing.pendingMonthsMap.has(monthName)) {
-          existing.pendingMonthsMap.set(monthName, pending);
-        } else {
-          existing.pendingMonthsMap.set(monthName, existing.pendingMonthsMap.get(monthName)! + pending);
+        // Avoid duplicate month entries if any
+        if (!existing.pendingMonthsList.some(m => m.monthName.toLowerCase() === monthName.toLowerCase())) {
+          existing.pendingMonthsList.push({ monthName, dueDateStr, pendingAmount: pending });
         }
       } else {
-        const pendingMonthsMap = new Map<string, number>();
-        pendingMonthsMap.set(monthName, pending);
         studentPendingMap.set(student.id, {
           className,
           studentName,
           parentNumber,
           classFees,
-          pendingMonthsMap,
+          pendingMonthsList: [{ monthName, dueDateStr, pendingAmount: pending }],
           totalPendingFees: pending,
         });
       }
@@ -219,7 +219,10 @@ export async function GET(request: NextRequest) {
     const csvRows = [
       csvHeaders.map(escapeCsv).join(','),
       ...aggregatedList.map((row) => {
-        const pendingMonthsJoined = Array.from(row.pendingMonthsMap.keys()).join(', ');
+        // Sort student's pending months chronologically by due date
+        row.pendingMonthsList.sort((a, b) => (a.dueDateStr || '').localeCompare(b.dueDateStr || ''));
+        const pendingMonthsJoined = row.pendingMonthsList.map(m => m.monthName).join(', ');
+
         return [
           escapeCsv(row.className),
           escapeCsv(row.studentName),
