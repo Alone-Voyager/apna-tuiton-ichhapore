@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Users2, CheckCircle, Clock, AlertTriangle, PieChart, ArrowRight, ArrowLeft, DollarSign, X, Check, Loader2, Search } from 'lucide-react';
 import RevenueAnalytics from '../../../components/RevenueAnalytics';
+import PendingStudentsReportCard from '../../../components/PendingStudentsReportCard';
 import {
   Pagination,
   PaginationContent,
@@ -466,6 +467,11 @@ function FeesPageContent() {
 
           {activeSubView === 'overview' ? (
             <>
+              {/* Download Pending Fees CSV Report Card */}
+              <div className="mb-6">
+                <PendingStudentsReportCard />
+              </div>
+
               {/* Stats Overview */}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden transition-all hover:shadow-md col-span-2 sm:col-span-1">

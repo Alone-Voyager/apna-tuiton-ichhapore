@@ -25,6 +25,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import RoleGuard from '../../../components/RoleGuard';
+import PendingStudentsReportCard from '../../../components/PendingStudentsReportCard';
 
 interface ClassData {
   id: string;
@@ -692,8 +693,11 @@ export default function RecordsClient() {
           </div>
         ) : (
           /* FEE RECORDS TAB CONTENT */
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="space-y-6">
+            <PendingStudentsReportCard />
+
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="font-extrabold text-slate-800 text-lg">Fee Entry Records</h3>
                 <p className="text-xs text-slate-500 font-medium">
@@ -820,7 +824,8 @@ export default function RecordsClient() {
               </>
             )}
           </div>
-        )}
+        </div>
+      )}
 
         {/* MODAL 1: ADD NEW ADMISSION */}
         {showAddAdmission && (
