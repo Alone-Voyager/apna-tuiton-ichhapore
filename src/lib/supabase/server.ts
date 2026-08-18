@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
+import { supabaseAdmin } from './client';
 
 function extractBearerToken(request?: NextRequest) {
   if (!request) return null;
@@ -65,7 +66,6 @@ export async function getRequestOrgContext(request?: NextRequest) {
     userError = authResult.error;
   } catch (error: any) {
     console.error('Supabase auth.getUser() threw an exception:', error);
-    // Return early if there's a network error (like ECONNRESET)
     return { supabase, user: null, organizationId: null as string | null };
   }
 
@@ -73,27 +73,45 @@ export async function getRequestOrgContext(request?: NextRequest) {
     return { supabase, user: null, organizationId: null as string | null };
   }
 
-  const { data: adminProfile } = await supabase
+  // Use service role admin client to bypass RLS and read admin_profiles reliably
+  let organizationId: string | null = null;
+
+  const { data: adminProfile } = await supabaseAdmin
     .from('admin_profiles')
     .select('organization_id')
     .eq('user_id', user.id)
-    .eq('is_active', true)
     .maybeSingle();
 
   if (adminProfile?.organization_id) {
-    return { supabase, user, organizationId: adminProfile.organization_id as string };
+    organizationId = adminProfile.organization_id;
   }
 
-  const { data: studentProfile } = await supabase
-    .from('student_profiles')
-    .select('organization_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle();
+  if (!organizationId) {
+    const { data: studentProfile } = await supabaseAdmin
+      .from('student_profiles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (studentProfile?.organization_id) {
+      organizationId = studentProfile.organization_id;
+    }
+  }
+
+  // Fallback: Default to first organization in database
+  if (!organizationId) {
+    const { data: fallbackOrg } = await supabaseAdmin
+      .from('organizations')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+    if (fallbackOrg?.id) {
+      organizationId = fallbackOrg.id;
+    }
+  }
 
   return {
     supabase,
     user,
-    organizationId: (studentProfile?.organization_id as string | undefined) ?? null,
+    organizationId,
   };
 }

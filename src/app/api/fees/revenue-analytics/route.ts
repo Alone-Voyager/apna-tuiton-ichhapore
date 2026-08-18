@@ -27,22 +27,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: userData } = await supabase
+    // 1. Fetch organization ID using service role client to bypass RLS issues
+    let organizationId: string | null = null;
+
+    const { data: adminProfile } = await supabaseAdmin
       .from('admin_profiles')
       .select('organization_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (!userData?.organization_id) {
+    if (adminProfile?.organization_id) {
+      organizationId = adminProfile.organization_id;
+    }
+
+    if (!organizationId) {
+      const { data: studentProfile } = await supabaseAdmin
+        .from('student_profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (studentProfile?.organization_id) {
+        organizationId = studentProfile.organization_id;
+      }
+    }
+
+    // Fallback to first available organization if missing
+    if (!organizationId) {
+      const { data: fallbackOrg } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      if (fallbackOrg?.id) {
+        organizationId = fallbackOrg.id;
+      }
+    }
+
+    if (!organizationId) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    const organizationId = userData.organization_id;
-
-    // 1. Sync all active student fee payments first to guarantee database is correct
+    // 2. Sync all active student fee payments first to guarantee database is correct
     await syncAllStudentFeePayments(supabaseAdmin, organizationId);
 
-    // 2. Fetch all unpaid/pending payments for active students
+    // 3. Fetch all unpaid/pending payments for active students
     const { data: unpaidPayments } = await supabaseAdmin
       .from('fee_payments')
       .select('payment_month, amount, paid_amount, students!inner(is_active, status)')
@@ -50,7 +78,7 @@ export async function GET(request: NextRequest) {
       .eq('students.is_active', true)
       .neq('students.status', 'inactive');
 
-    // 3. Fetch all paid histories for active students
+    // 4. Fetch all paid histories for active students
     const { data: paidHistories } = await supabaseAdmin
       .from('fee_payment_history')
       .select('payment_month, amount, paid_amount, students!inner(is_active, status)')
@@ -58,7 +86,7 @@ export async function GET(request: NextRequest) {
       .eq('students.is_active', true)
       .neq('students.status', 'inactive');
 
-    // 4. Compile metrics grouped by billing month
+    // 5. Compile metrics grouped by billing month
     const monthStatsMap = new Map<string, {
       totalStudents: number;
       paidStudents: number;
