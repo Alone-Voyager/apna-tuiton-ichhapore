@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Fetch organization ID using service role client to bypass RLS issues
+    // 1. Resolve Organization ID with auto-heal for unlinked users
     let organizationId: string | null = null;
 
     const { data: adminProfile } = await supabaseAdmin
@@ -51,15 +51,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback to first available organization if missing
+    // Fallback & Auto-heal: Link user to default organization if unlinked
     if (!organizationId) {
       const { data: fallbackOrg } = await supabaseAdmin
         .from('organizations')
         .select('id')
         .limit(1)
         .maybeSingle();
+
       if (fallbackOrg?.id) {
         organizationId = fallbackOrg.id;
+
+        // Auto-create admin profile entry so user is permanently linked
+        await supabaseAdmin.from('admin_profiles').upsert(
+          {
+            user_id: user.id,
+            organization_id: organizationId,
+            role: 'admin',
+            is_active: true,
+          },
+          { onConflict: 'user_id' }
+        ).catch(() => {});
       }
     }
 
@@ -67,7 +79,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    // 2. Sync all active student fee payments first to guarantee database is correct
+    // 2. Sync all active student fee payments first
     await syncAllStudentFeePayments(supabaseAdmin, organizationId);
 
     // 3. Fetch all unpaid/pending payments for active students

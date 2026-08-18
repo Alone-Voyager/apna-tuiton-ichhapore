@@ -97,7 +97,7 @@ export async function getRequestOrgContext(request?: NextRequest) {
     }
   }
 
-  // Fallback: Default to first organization in database
+  // Fallback & Auto-heal: Link user to default organization if unlinked
   if (!organizationId) {
     const { data: fallbackOrg } = await supabaseAdmin
       .from('organizations')
@@ -106,6 +106,17 @@ export async function getRequestOrgContext(request?: NextRequest) {
       .maybeSingle();
     if (fallbackOrg?.id) {
       organizationId = fallbackOrg.id;
+
+      // Auto-create admin profile entry so user is permanently linked
+      await supabaseAdmin.from('admin_profiles').upsert(
+        {
+          user_id: user.id,
+          organization_id: organizationId,
+          role: 'admin',
+          is_active: true,
+        },
+        { onConflict: 'user_id' }
+      ).catch(() => {});
     }
   }
 
