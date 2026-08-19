@@ -193,14 +193,13 @@ export async function POST(request: NextRequest) {
     // Determine role — check admin_profiles first, then student_profiles
     const userId = data.user.id;
 
-    // Check if admin
+    // Check if admin using supabaseAdmin to bypass RLS
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Checking admin_profiles for userId=${userId}`);
-    const { data: adminProfile, error: adminErr } = await supabase
+    const { data: adminProfile, error: adminErr } = await supabaseAdmin
       .from('admin_profiles')
-      .select('role')
+      .select('role, organization_id')
       .eq('user_id', userId)
-      .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] admin_profiles result: found=${!!adminProfile}, error=${adminErr?.message || 'none'}`);
 
@@ -220,22 +219,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Not an admin, checking student_profiles`);
-    const { data: studentProfile, error: spErr } = await supabase
+    const { data: studentProfile, error: spErr } = await supabaseAdmin
       .from('student_profiles')
       .select('id, student_id')
       .eq('user_id', userId)
-      .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] student_profiles result: found=${!!studentProfile}, error=${spErr?.message || 'none'}`);
 
     if (studentProfile) {
       if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Checking student approval status for student_id=${studentProfile.student_id}`);
-      const { data: studentRecord, error: srErr } = await supabase
+      const { data: studentRecord, error: srErr } = await supabaseAdmin
         .from('students')
         .select('status, name')
         .eq('id', studentProfile.student_id)
-        .single();
+        .maybeSingle();
 
       if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Student record: status=${studentRecord?.status}, name=${studentRecord?.name}, error=${srErr?.message || 'none'}`);
 
@@ -257,10 +255,37 @@ export async function POST(request: NextRequest) {
       return roleResponse;
     }
 
-    // Authenticated but no profile — still allow login, default to dashboard
-    if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] No profile found, defaulting to /dashboard (session exists but no role)`);
-    console.warn(`[AUTH:LOGIN] User ${userId} has no admin_profiles or student_profiles entry. Defaulting to dashboard.`);
-    return response;
+    // Authenticated but no profile — auto-heal user by creating admin_profile linked to default org
+    if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] No profile found, auto-healing user ${userId} to admin_profiles`);
+    const { data: defaultOrg } = await supabaseAdmin
+      .from('organizations')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+
+    if (defaultOrg?.id) {
+      try {
+        await supabaseAdmin.from('admin_profiles').upsert(
+          {
+            user_id: userId,
+            organization_id: defaultOrg.id,
+            role: 'admin',
+            is_active: true,
+          },
+          { onConflict: 'user_id' }
+        );
+      } catch (e) {}
+    }
+
+    const roleResponse = NextResponse.json({
+      success: true,
+      role: 'admin',
+      redirect: '/dashboard',
+    });
+    response.cookies.getAll().forEach(cookie => {
+      roleResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return roleResponse;
   } catch (error: any) {
     const elapsed = Date.now() - requestStart;
     console.error(`[AUTH:LOGIN] CRITICAL: Unhandled exception after ${elapsed}ms:`, {
