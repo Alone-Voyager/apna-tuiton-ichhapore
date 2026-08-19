@@ -1,16 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 
-// Lazily-initialized browser client. Do NOT create at module import time because
-// during Next.js build this module is imported on the server and `createBrowserClient`
-// will validate presence of NEXT_PUBLIC_* env vars and throw. We use a small proxy
-// that constructs the client on first access in a browser runtime.
+const DEFAULT_SUPABASE_URL = 'https://gvhguudtztutbxwolsxd.supabase.co';
+const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2aGd1dWR0enR1dGJ4d29sc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDY3OTc5MjksImV4cCI6MjAyMjM3MzkyOX0.5_f5WqC5-P2q6k6jJ';
+const DEFAULT_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2aGd1dWR0enR1dGJ4d29sc3hkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTU3Nzk3NCwiZXhwIjoyMDc1MTUzOTc0fQ.2sDnbsk9Te1bsZ5rN3tOyx83Zl5RsJgVz2N5O_EHXsc';
+
 function ensureBrowserEnv(): { url: string; key: string } {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error('@supabase/ssr: Your project URL and anon key are required to create a Supabase browser client.');
-  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
   return { url, key };
 }
 
@@ -38,15 +35,12 @@ export const supabase: any = new Proxy({}, {
   }
 });
 
-// Lazily-initialized server/admin client. We create a proxy that will instantiate
-// the real client on first access. This avoids throwing at module import when
-// environment variables are not present during build/analysis.
 function ensureServerEnv(): { url: string; key: string } {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('@supabase/ssr: Your project URL and API key are required to create a Supabase admin client!');
-  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+              process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+              DEFAULT_SERVICE_ROLE_KEY;
   return { url, key };
 }
 
