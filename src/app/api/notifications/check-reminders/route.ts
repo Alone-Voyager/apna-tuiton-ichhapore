@@ -17,7 +17,12 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
       (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg');
 
-    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: reminders } = await supabase
+      .from('notification_reminders')
+      .select('*')
+      .eq('is_enabled', true);
 
     if (!reminders || reminders.length === 0) {
       console.log('No active reminders found');

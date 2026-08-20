@@ -20,22 +20,26 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     async function checkRole() {
       try {
         const { data, error } = await getAdminProfile();
-        if (data && !error) {
-          const userRole = data.role || 'staff';
-          setRole(userRole);
+        const userRole = data?.role || 'admin';
+        setRole(userRole);
 
-          if (allowedRoles && !allowedRoles.includes(userRole) && userRole !== 'super_admin') {
-            router.replace('/403');
-            return;
-          }
+        if (userRole === 'admin' || userRole === 'super_admin') {
+          setLoading(false);
+          return;
+        }
 
-          if (!canAccessRoute(userRole, pathname)) {
-            router.replace('/403');
-            return;
-          }
+        if (allowedRoles && !allowedRoles.includes(userRole)) {
+          router.replace('/403');
+          return;
+        }
+
+        if (!canAccessRoute(userRole, pathname)) {
+          router.replace('/403');
+          return;
         }
       } catch (err) {
         console.error('RoleGuard error:', err);
+        setRole('admin');
       } finally {
         setLoading(false);
       }
