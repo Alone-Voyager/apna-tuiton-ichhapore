@@ -90,7 +90,7 @@ export async function signIn(email: string, password: string) {
     }
 
     // Force a reload of the browser client session since cookies were set by the server
-    await supabase.auth.getSession();
+    await supabase.auth.getSession().catch(() => {});
 
     return {
       data: {
@@ -106,19 +106,31 @@ export async function signIn(email: string, password: string) {
 }
 
 /**
- * Sign out current user via API
+ * Sign out current user via API & browser storage
  */
 export async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut();
+    // 1. Clear server-side HTTP cookies
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
 
-    if (error) {
-      return { error };
+    // 2. Clear browser Supabase session
+    if (typeof window !== 'undefined') {
+      try {
+        await supabase.auth.signOut().catch(() => {});
+      } catch (e) {
+        console.warn('Browser signOut warning:', e);
+      }
+      
+      // 3. Clear local storage & session storage
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
     }
 
     return { error: null };
   } catch (error: any) {
-    return { error };
+    return { error: null }; // Never throw on logout
   }
 }
 
@@ -145,7 +157,6 @@ export async function getAdminProfile() {
   const { data: userData, error: userError } = await getUser();
 
   if (userError || !userData.user) {
-
     return { data: null, error: userError };
   }
 
@@ -168,8 +179,6 @@ export async function updateAdminProfile(
     role?: 'super_admin' | 'admin' | 'staff';
   }
 ) {
-  // Use the signed-in user's client so row-level security remains enforced.
-  // Service-role credentials must never be imported into this browser module.
   const { data, error } = await supabase
     .from('admin_profiles')
     .update(updates)

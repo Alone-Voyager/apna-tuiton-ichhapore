@@ -109,13 +109,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     setIsLoggingOut(true);
     try {
       await signOut();
-      // close confirmation if open
-      setShowLogoutConfirm(false);
-      // redirect to login
-      router.push('/login');
     } catch (err) {
       console.error('Logout error', err);
+    } finally {
+      setShowLogoutConfirm(false);
       setIsLoggingOut(false);
+      window.location.href = '/login';
     }
   };
 
