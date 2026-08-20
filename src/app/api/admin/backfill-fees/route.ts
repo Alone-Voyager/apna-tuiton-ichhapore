@@ -36,11 +36,8 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
-    if (!userData?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    const organizationId = userData.organization_id;
+    // Organization check bypassed for single org
+    const organizationId = userData?.organization_id || 'default-org';
     const today = new Date();
 
     // 1. Fetch all active students

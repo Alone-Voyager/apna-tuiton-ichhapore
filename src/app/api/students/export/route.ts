@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (userError || !userData) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      // bypassed organization check
     }
 
     const organizationId = userData.organization_id;

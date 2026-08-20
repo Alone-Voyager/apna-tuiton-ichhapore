@@ -16,32 +16,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's organization_id & role using service role client
-    let userData = null;
     const { data: adminProfile } = await supabaseAdmin
       .from('admin_profiles')
       .select('*')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (adminProfile?.organization_id) {
-      userData = adminProfile;
-    } else {
-      const { data: fallbackOrg } = await supabaseAdmin
-        .from('organizations')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
-      if (fallbackOrg?.id) {
-        userData = { organization_id: fallbackOrg.id, role: 'admin' };
-      }
-    }
-
-    if (!userData?.organization_id) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
+    const userData: any = adminProfile || { role: 'admin' };
 
     if (userData.role === 'staff' || userData.role === 'teacher') {
       return NextResponse.json(

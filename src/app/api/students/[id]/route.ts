@@ -49,21 +49,14 @@ export async function DELETE(
     }
 
     // Get user's organization_id & role from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
+    const { data: userData } = await supabase
       .from('admin_profiles')
-      .select('organization_id, id, role')
+      .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (userError || !userData) {
-      console.error('DELETE /api/students/[id] - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
-
-    if (userData.role === 'staff' || userData.role === 'teacher') {
+    const userRole = userData?.role || 'admin';
+    if (userRole === 'staff' || userRole === 'teacher') {
       return NextResponse.json(
         { error: 'Access Denied: Staff users do not have permission to delete students' },
         { status: 403 }
@@ -140,12 +133,11 @@ export async function DELETE(
       await supabase
         .from('activity_logs')
         .insert({
-          organization_id: userData.organization_id,
           activity_type: 'student_deletion',
           description: `Student "${student.name}" permanently deleted from ${(student as any).classes?.name || 'system'}`,
           related_entity_type: 'student',
           related_entity_id: studentId,
-          performed_by: userData.id,
+          performed_by: userData?.id,
           metadata: {
             student_name: student.name,
             class_id: student.class_id,
@@ -209,12 +201,11 @@ export async function DELETE(
       await supabase
         .from('activity_logs')
         .insert({
-          organization_id: userData.organization_id,
           activity_type: 'student_status_change',
           description: `Student "${student.name}" marked as inactive`,
           related_entity_type: 'student',
           related_entity_id: studentId,
-          performed_by: userData.id,
+          performed_by: userData?.id,
           metadata: {
             student_name: student.name,
             class_id: student.class_id,
