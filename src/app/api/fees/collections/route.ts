@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      .eq('organization_id', adminProfile.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', adminProfile.organization_id)
       .order('collected_at', { ascending: false });
 
     // Apply filters

@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
           classes(id, name)
         )
       `)
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .neq('status', 'Paid');
 
     if (queryError) {

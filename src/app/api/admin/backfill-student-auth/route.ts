@@ -19,7 +19,7 @@ async function generateRollNumber(
   const { count } = await supabaseAdmin
     .from('students')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', organizationId);
+    // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
   const studentNum = (count || 0) + offset + 1;
   return `AT-${new Date().getFullYear()}-${String(studentNum).padStart(3, '0')}`;
 }

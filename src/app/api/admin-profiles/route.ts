@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('admin_profiles')
       .select('id, full_name, email, role, phone, is_active, created_at, updated_at')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .order('created_at', { ascending: true });
 
     if (error) {

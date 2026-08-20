@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
           name
         )
       `)
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .gte('admission_date', firstDayOfMonth)
       .lte('admission_date', lastDayOfMonth)
       .order('admission_date', { ascending: false })

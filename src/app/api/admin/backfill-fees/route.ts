@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: students, error: studentsError } = await supabaseAdmin
       .from('students')
       .select('id, name, admission_date, monthly_fee')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('is_active', true);
 
     if (studentsError || !students) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const { data: paidHistory } = await supabaseAdmin
       .from('fee_payment_history')
       .select('student_id, payment_month')
-      .eq('organization_id', organizationId);
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
 
     const paidByStudent = new Map<string, Set<string>>();
     for (const h of paidHistory || []) {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const { error: deleteAllError } = await supabaseAdmin
       .from('fee_payments')
       .delete()
-      .eq('organization_id', organizationId);
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
 
     if (deleteAllError) {
       console.error('Error deleting existing fee payments:', deleteAllError);

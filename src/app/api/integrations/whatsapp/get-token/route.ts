@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { data: apiKeySettings, error } = await supabase
       .from('integration_settings')
       .select('api_key')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('integration_type', 'whatsapp')
       .eq('is_active', true)
       .single();

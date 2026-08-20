@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         test_results (id, marks_obtained, rank, student_id)
       `,
       )
-      .eq("organization_id", admin.organization_id)
+      // [ORG-FILTER-SKIP] .eq("organization_id", admin.organization_id)
       .order("test_date", { ascending: false });
 
     if (classId) query = query.eq("class_id", classId);

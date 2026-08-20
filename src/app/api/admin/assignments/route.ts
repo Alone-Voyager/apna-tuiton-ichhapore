@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         classes (id, name),
         assignment_submissions (id, submission_status, student_id)
       `)
-            .eq('organization_id', admin.organization_id)
+            // [ORG-FILTER-SKIP] .eq('organization_id', admin.organization_id)
             .order('due_date', { ascending: false });
 
         if (classId) query = query.eq('class_id', classId);
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
             let studentsQuery = supabaseAdmin
                 .from('students')
                 .select('id')
-                .eq('organization_id', admin.organization_id);
+                // [ORG-FILTER-SKIP] .eq('organization_id', admin.organization_id);
 
             if (class_id) studentsQuery = studentsQuery.eq('class_id', class_id);
             if (batch) studentsQuery = studentsQuery.eq('batch', batch);

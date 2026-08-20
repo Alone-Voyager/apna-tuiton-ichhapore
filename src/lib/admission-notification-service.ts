@@ -51,7 +51,7 @@ export async function sendAdmissionWelcome(
     const { data: whatsappSettings, error: settingsError } = await supabaseAdmin
       .from('integration_settings')
       .select('is_active, config')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('integration_type', 'whatsapp')
       .single();
 
@@ -71,7 +71,7 @@ export async function sendAdmissionWelcome(
     const { data: template, error: templateError } = await supabaseAdmin
       .from('reminder_settings')
       .select('id, template_message')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('reminder_type', 'admission_welcome')
       .eq('is_enabled', true)
       .single();

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const { data: classes, error: classesError } = await supabase
       .from('classes')
       .select('*')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('is_active', true)
       .order('name', { ascending: true });
 

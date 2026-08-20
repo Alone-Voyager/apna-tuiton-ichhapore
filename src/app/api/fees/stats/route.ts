@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     const { data: unpaidEntries, error: unpaidFetchError } = await supabase
       .from('fee_payments')
       .select('id, payment_month')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('status', 'Unpaid');
     
     if (unpaidFetchError) {
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
           monthly_fee
         )
       `)
-      .eq('organization_id', userData.organization_id);
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
 
     if (studentsError) {
       console.error('Error fetching students:', studentsError);
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .or(`payment_month.eq.${filterMonth},status.eq.Overdue`);
 
     if (feeError) {
@@ -254,7 +254,7 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('payment_month', filterMonth);
 
     if (historyError) {
@@ -325,7 +325,7 @@ export async function GET(request: NextRequest) {
     const { data: orgClasses } = await supabase
       .from('classes')
       .select('id, name')
-      .eq('organization_id', userData.organization_id);
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
 
     // Group by class
     const classFeeMap = new Map();

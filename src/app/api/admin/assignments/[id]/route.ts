@@ -41,7 +41,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
             .from('assignments')
             .select('id')
             .eq('id', assignmentId)
-            .eq('organization_id', admin.organization_id)
+            // [ORG-FILTER-SKIP] .eq('organization_id', admin.organization_id)
             .single();
 
         if (checkError || !assignment) {

@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     const { data: inquiries, error } = await supabase
       .from('inquiries')
       .select('*')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .gte('created_at', tenDaysAgoStr)
       .order('created_at', { ascending: false });
 

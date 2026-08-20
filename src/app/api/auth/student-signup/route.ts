@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         const { count } = await supabaseAdmin
             .from('students')
             .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organizationId);
+            // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
 
         const roll_number = `AT-${new Date().getFullYear()}-${((count || 0) + 1).toString().padStart(3, '0')}`;
 

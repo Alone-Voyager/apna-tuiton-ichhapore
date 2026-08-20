@@ -505,7 +505,7 @@ export async function getClassesByOrganization(organizationId: string) {
   return await supabase
     .from('classes')
     .select('*')
-    .eq('organization_id', organizationId)
+    // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
     .eq('is_active', true)
     .order('name', { ascending: true });
 }

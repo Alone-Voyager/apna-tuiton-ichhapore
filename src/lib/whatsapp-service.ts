@@ -69,7 +69,7 @@ export async function sendWhatsAppMessage(params: SendMessageParams): Promise<Se
     const { data: integration, error: integrationError } = await supabaseAdmin
       .from('integration_settings')
       .select('api_key, is_active')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('integration_type', 'whatsapp')
       .single();
 

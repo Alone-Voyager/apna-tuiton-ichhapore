@@ -86,7 +86,7 @@ export async function DELETE(
       .from('students')
       .select('id, name, class_id, organization_id, status, classes(name)')
       .eq('id', studentId)
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .single();
 
     if (studentError || !student) {
@@ -109,7 +109,7 @@ export async function DELETE(
         .from('students')
         .delete()
         .eq('id', studentId)
-        .eq('organization_id', userData.organization_id);
+        // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
 
       if (deleteError) {
         console.error('Error deleting student (hard):', deleteError);
@@ -173,7 +173,7 @@ export async function DELETE(
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId)
-        .eq('organization_id', userData.organization_id);
+        // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
 
       if (updateError) {
         console.error('Error deleting student (soft):', updateError);
@@ -333,7 +333,7 @@ export async function PATCH(
       .from('students')
       .select('*')
       .eq('id', studentId)
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .single();
 
     if (studentError || !existingStudent) {

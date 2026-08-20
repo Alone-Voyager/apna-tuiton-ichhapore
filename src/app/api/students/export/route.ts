@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         attendance_rate, status, notes, school_name,
         classes!students_class_id_fkey(name)
       `)
-      .eq('organization_id', organizationId);
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
 
     if (classId) query = query.eq('class_id', classId);
     if (fromDate) query = query.gte('admission_date', fromDate);

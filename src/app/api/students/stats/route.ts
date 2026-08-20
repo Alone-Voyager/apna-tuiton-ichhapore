@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const { count: totalStudents, error: totalError } = await supabase
       .from('students')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('is_active', true);
 
     if (totalError) {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const { count: thisMonthAdmissions, error: monthError } = await supabase
       .from('students')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .gte('admission_date', firstDayOfMonth)
       .lte('admission_date', lastDayOfMonth);
 

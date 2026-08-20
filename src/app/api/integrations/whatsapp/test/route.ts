@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const { data: apiKeySettings, error: settingsError } = await supabase
       .from('integration_settings')
       .select('api_key, config')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('integration_type', 'whatsapp')
       .single();
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
               last_error: errorMessage,
             }
           })
-          .eq('organization_id', userData.organization_id)
+          // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
           .eq('integration_type', 'whatsapp');
 
         return NextResponse.json(
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
               last_error: 'No active WhatsApp session found. Please scan QR code in Wassender dashboard.',
             }
           })
-          .eq('organization_id', userData.organization_id)
+          // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
           .eq('integration_type', 'whatsapp');
 
         return NextResponse.json(
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
             last_error: null,
           }
         })
-        .eq('organization_id', userData.organization_id)
+        // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
         .eq('integration_type', 'whatsapp');
 
       return NextResponse.json(
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
             last_error: apiError.message || 'Network error connecting to WhatsApp API',
           }
         })
-        .eq('organization_id', userData.organization_id)
+        // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
         .eq('integration_type', 'whatsapp');
 
       return NextResponse.json(

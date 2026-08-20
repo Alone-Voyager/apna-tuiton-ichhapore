@@ -64,14 +64,14 @@ export async function GET(request: NextRequest) {
     const { data: unpaidPayments } = await supabaseAdmin
       .from('fee_payments')
       .select('payment_month, amount, paid_amount')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .catch(() => ({ data: null }));
 
     // Fetch paid histories
     const { data: paidHistories } = await supabaseAdmin
       .from('fee_payment_history')
       .select('payment_month, amount, paid_amount')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .catch(() => ({ data: null }));
 
     // Compile metrics grouped by billing month

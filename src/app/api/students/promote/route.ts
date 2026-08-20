@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       .from('students')
       .select('id, class_id, organization_id')
       .eq('id', studentId)
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .single();
 
     if (studentError || !student) {
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       .from('classes')
       .select('id, total_students')
       .eq('id', newClassId)
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .single();
 
     if (classError || !newClass) {

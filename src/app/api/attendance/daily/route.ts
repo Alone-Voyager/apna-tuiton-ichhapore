@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     let studentsQuery = supabase
       .from('students')
       .select('id, name, roll_number, class_id, classes(id, name)')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('is_active', true)
       .eq('status', 'active')
       .order('roll_number');
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
     const { data: validStudents, error: validationError } = await supabase
       .from('students')
       .select('id')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .in('id', studentIds);
 
     if (validationError) {

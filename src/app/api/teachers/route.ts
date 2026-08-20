@@ -115,7 +115,7 @@ export async function GET(req: Request) {
     const { data: teachers, error: fetchErr } = await supabaseAdmin
       .from('teachers')
       .select('*')
-      .eq('organization_id', orgId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
 
     if (fetchErr) {

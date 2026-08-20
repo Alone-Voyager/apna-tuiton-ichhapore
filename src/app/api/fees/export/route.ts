@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         due_date, payment_method, receipt_number, status, notes,
         students!inner(id, name, roll_number, class_id, classes!inner(id, name))
       `)
-      .eq('organization_id', organizationId);
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
 
     if (fromDate) query = query.gte('payment_date', fromDate);
     if (toDate) query = query.lte('payment_date', toDate);

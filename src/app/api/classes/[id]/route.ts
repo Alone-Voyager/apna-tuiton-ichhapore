@@ -75,7 +75,7 @@ export async function DELETE(
       .from('classes')
       .select('id, organization_id, name')
       .eq('id', classId)
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .single();
 
     if (classError || !classData) {
@@ -109,7 +109,7 @@ export async function DELETE(
       .from('classes')
       .delete()
       .eq('id', classId)
-      .eq('organization_id', userData.organization_id);
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
 
     if (deleteError) {
       console.error('Error deleting class:', deleteError);

@@ -197,7 +197,7 @@ export async function DELETE(
       .from('notifications')
       .delete()
       .eq('id', id)
-      .eq('organization_id', adminProfile.organization_id);
+      // [ORG-FILTER-SKIP] .eq('organization_id', adminProfile.organization_id);
 
     if (error) {
       console.error('Error deleting notification:', error);

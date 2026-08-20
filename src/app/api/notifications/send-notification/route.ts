@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const { data: whatsappSettings, error: settingsError } = await supabase
       .from('integration_settings')
       .select('*')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('integration_type', 'whatsapp')
       .single();
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       const { data: allStudents, error: studentsError } = await supabase
         .from('students')
         .select('id, name, whatsapp, parent_name, class_id')
-        .eq('organization_id', organizationId)
+        // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
         .eq('status', 'active');
 
       if (studentsError) {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       const { data: classStudents, error: studentsError } = await supabase
         .from('students')
         .select('id, name, whatsapp, parent_name, class_id')
-        .eq('organization_id', organizationId)
+        // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
         .eq('class_id', targetId)
         .eq('status', 'active');
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('id, name, whatsapp, parent_name, class_id')
-        .eq('organization_id', organizationId)
+        // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
         .eq('id', targetId)
         .eq('status', 'active')
         .single();

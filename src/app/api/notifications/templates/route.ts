@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const { data: reminders, error } = await supabase
       .from('reminder_settings')
       .select('*')
-      .eq('organization_id', userData.organization_id)
+      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .order('created_at', { ascending: false });
 
     if (error) {

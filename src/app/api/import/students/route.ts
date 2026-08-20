@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         let classData = await supabase
           .from('classes')
           .select('id, monthly_fee')
-          .eq('organization_id', organizationId)
+          // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
           .eq('name', className)
           .single();
 

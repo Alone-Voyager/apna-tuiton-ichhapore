@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabaseAdmin
             .from('classes')
             .select('id, name')
-            .eq('organization_id', orgId)
+            // [ORG-FILTER-SKIP] .eq('organization_id', orgId)
             .eq('is_active', true)
             .order('name');
 

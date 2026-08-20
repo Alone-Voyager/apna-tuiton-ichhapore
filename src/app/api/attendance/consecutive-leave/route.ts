@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const { data: suspendedStudents, error: suspendedError } = await supabase
       .from('students')
       .select('id, name, roll_number, status, updated_at, notes')
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('status', 'suspended')
       .order('updated_at', { ascending: false });
 

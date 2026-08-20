@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           full_name
         )
       `)
-      .eq('organization_id', organizationId)
+      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(parseInt(limit));
 

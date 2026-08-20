@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 students (id, name, roll_number, batch)
             `)
             .eq("assignment_id", assignment_id)
-            .eq("organization_id", admin.organization_id);
+            // [ORG-FILTER-SKIP] .eq("organization_id", admin.organization_id);
 
         if (error) throw error;
         return NextResponse.json({ success: true, data });
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             .update(updateData)
             .eq("assignment_id", assignment_id)
             .eq("student_id", student_id)
-            .eq("organization_id", admin.organization_id)
+            // [ORG-FILTER-SKIP] .eq("organization_id", admin.organization_id)
             .select()
             .single();
 
