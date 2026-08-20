@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
+const DEFAULT_SUPABASE_URL = 'https://cgbwcayquqpgbnyxnyzw.supabase.co';
+const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg';
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -9,16 +12,12 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // If Supabase env vars aren't available during build time, skip auth checks.
-  // This prevents Next build from failing when environment variables are provided
-  // at runtime or via build args in CI.
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return response;
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -62,56 +61,71 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Use getUser() instead of getSession() for secure server-side auth check
+  const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
-  // If not signed in and accessing protected routes -> login
-  if (!session && (pathname.startsWith('/dashboard') || pathname.startsWith('/student'))) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // If not signed in and accessing protected routes -> redirect to login
+  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/student') || pathname.startsWith('/staff'))) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // If signed in and on login/signup -> figure out where to send them
-  if (session && (pathname === '/login' || pathname === '/signup')) {
+  // If signed in and on login/signup -> redirect to appropriate dashboard
+  if (user && (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/login/'))) {
     // Check if they're a student
-    const { data: studentProfile } = await supabase
-      .from('student_profiles')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .single();
+    try {
+      const { data: studentProfile } = await supabase
+        .from('student_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (studentProfile) {
-      return NextResponse.redirect(new URL('/student/dashboard', request.url));
+      if (studentProfile) {
+        return NextResponse.redirect(new URL('/student/dashboard', request.url));
+      }
+    } catch (e) {
+      // Ignore errors — just redirect to admin dashboard
     }
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  if (session && pathname.startsWith('/dashboard')) {
-    const { data: studentProfile } = await supabase
-      .from('student_profiles')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .single();
+  // If signed in as student but accessing admin dashboard -> redirect
+  if (user && pathname.startsWith('/dashboard')) {
+    try {
+      const { data: studentProfile } = await supabase
+        .from('student_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (studentProfile) {
-      return NextResponse.redirect(new URL('/student/dashboard', request.url));
+      if (studentProfile) {
+        return NextResponse.redirect(new URL('/student/dashboard', request.url));
+      }
+    } catch (e) {
+      // Ignore — allow access
     }
   }
 
-  if (session && pathname.startsWith('/student')) {
-    const { data: adminProfile } = await supabase
-      .from('admin_profiles')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .single();
+  // If signed in as admin but accessing student routes -> redirect
+  if (user && pathname.startsWith('/student')) {
+    try {
+      const { data: adminProfile } = await supabase
+        .from('admin_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (adminProfile) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      if (adminProfile) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    } catch (e) {
+      // Ignore — allow access
     }
   }
 
