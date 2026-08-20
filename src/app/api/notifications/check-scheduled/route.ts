@@ -12,72 +12,13 @@ export async function POST(request: NextRequest) {
     console.log('📅 Checking for scheduled notifications...');
 
     // Get Supabase credentials with fallbacks
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co';
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co');
     const supabaseKey = 
-      process.env.SUPABASE_SERVICE_ROLE_KEY || 
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA1OTM1OCwiZXhwIjoyMDc3NjM1MzU4fQ.GI0n5RGF540FQvGm9N9P5wfQrLnOycM_hKZ2dQeDAEI') || 
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg');
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Missing Supabase credentials:', { 
-        hasUrl: !!supabaseUrl, 
-        hasKey: !!supabaseKey 
-      });
-      return NextResponse.json(
-        { error: 'Server configuration error - missing Supabase credentials' }, 
-        { status: 500 }
-      );
-    }
-
-    // Log which key type we're using
-    const keyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE' : 
-                    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ? 'PUBLIC_SERVICE_ROLE' : 
-                    'ANON';
-    console.log('🔑 Using Supabase key type:', keyType);
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
-
-    // Get current time
-    const now = new Date();
     
-    // Find notifications that are scheduled and due to be sent
-    // Check notifications scheduled within the last 2 minutes to account for cron timing
-    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
-    
-    console.log('🔍 Looking for notifications between:', {
-      from: twoMinutesAgo.toISOString(),
-      to: now.toISOString(),
-      current: now.toISOString()
-    });
-    
-    // Debug: Check ALL scheduled notifications first
-    const { data: allScheduled } = await supabase
-      .from('notifications')
-      .select('id, scheduled_at, status')
-      .eq('status', 'scheduled');
-    
-    console.log('📊 All scheduled notifications in DB:', allScheduled?.length || 0);
-    if (allScheduled && allScheduled.length > 0) {
-      console.log('Sample:', allScheduled.slice(0, 3));
-    }
-    
-    const { data: scheduledNotifications, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('status', 'scheduled')
-      .lte('scheduled_at', now.toISOString())
-      .gte('scheduled_at', twoMinutesAgo.toISOString())
-      .order('scheduled_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching scheduled notifications:', error);
-      return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
-    }
 
     console.log(`📋 Query returned ${scheduledNotifications?.length || 0} notifications`);
 
