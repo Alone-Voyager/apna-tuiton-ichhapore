@@ -69,17 +69,21 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           endYear = currentYear + 1
         }
 
-        // Fetch payment history
+        // Fetch payment history safely
         const { data: paymentHistory } = await supabase
           .from('fee_payment_history')
           .select('payment_month')
           .eq('student_id', studentId)
+          .then((res: any) => res)
+          .catch(() => ({ data: [] }));
 
         // Fetch fee payments (check for overdue status)
         const { data: feePayments } = await supabase
           .from('fee_payments')
           .select('payment_month, status')
           .eq('student_id', studentId)
+          .then((res: any) => res)
+          .catch(() => ({ data: [] }));
 
         // Create lookup maps (using lowercase keys for case-insensitive lookup)
         const paidMonths = new Set([

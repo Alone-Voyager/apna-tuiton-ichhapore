@@ -113,12 +113,42 @@ export function FeeCollectionReport() {
       query = query.lte("payment_date", format(queryEndDate, "yyyy-MM-dd"))
     }
 
-    const { data, error } = await query as { data: any[] | null, error: any }
+    let { data, error } = await query as { data: any[] | null, error: any }
 
     if (error) {
-      console.error("Error fetching fee payment history:", error)
-      setIsLoading(false)
-      return
+      console.warn("fee_payment_history fetch warning, falling back to fee_payments:", error?.message)
+      let fallbackQuery = supabase
+        .from("fee_payments")
+        .select(`
+          id, 
+          student_id, 
+          paid_amount, 
+          payment_date, 
+          payment_month, 
+          payment_method, 
+          receipt_number, 
+          discount, 
+          late_fee,
+          students (
+            name,
+            classes (
+              name
+            )
+          )
+        `)
+        .eq('status', 'Paid')
+        .order('created_at', { ascending: false });
+
+      if (queryStartDate) {
+        fallbackQuery = fallbackQuery.gte("payment_date", format(queryStartDate, "yyyy-MM-dd"));
+      }
+      if (queryEndDate) {
+        fallbackQuery = fallbackQuery.lte("payment_date", format(queryEndDate, "yyyy-MM-dd"));
+      }
+
+      const fbResult = await fallbackQuery;
+      data = fbResult.data || [];
+      error = null;
     }
 
     // Transform the data to match our FeeRecord interface

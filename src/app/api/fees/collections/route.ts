@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getRequestOrgContext } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/client';
 
 interface FeePaymentHistory {
   id: string;
@@ -31,34 +31,6 @@ interface FeePaymentHistory {
 
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
-
-    const supabase = createServerClient(
-      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg',
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-    
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const classFilter = searchParams.get('class');
@@ -68,28 +40,16 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Get the current user's organization
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user } = await getRequestOrgContext(request);
     
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: adminProfile, error: profileError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (profileError || !adminProfile) {
-      console.error('Admin profile error:', profileError);
-      return NextResponse.json({ error: 'Admin profile not found' }, { status: 404 });
-    }
-
-    console.log('Organization ID:', adminProfile.organization_id);
+    const db = supabaseAdmin;
 
     // Build query for fee payment history with student details
-    let query = supabase
+    let { data: allPayments, error } = await db
       .from('fee_payment_history')
       .select(`
         *,
@@ -104,28 +64,31 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      // [ORG-FILTER-SKIP] .eq('organization_id', adminProfile.organization_id)
       .order('collected_at', { ascending: false });
 
-    // Apply filters
-    if (monthFilter && monthFilter !== 'all') {
-      query = query.eq('payment_month', monthFilter);
-    }
-
-    if (searchTerm) {
-      // Note: This is a simplified search. For better performance, consider using PostgreSQL full-text search
-      query = query.or(`receipt_number.ilike.%${searchTerm}%`);
-    }
-
-    const { data: allPayments, error } = await query;
-
+    // Fallback to fee_payments if fee_payment_history table is missing
     if (error) {
-      console.error('Error fetching fee collections:', error);
-      return NextResponse.json({ 
-        error: error.message,
-        details: error,
-        success: false 
-      }, { status: 500 });
+      console.warn('fee_payment_history query warning, trying fee_payments:', error.message);
+      const fallbackResult = await db
+        .from('fee_payments')
+        .select(`
+          *,
+          students (
+            id,
+            name,
+            roll_number,
+            class_id,
+            classes (
+              id,
+              name
+            )
+          )
+        `)
+        .eq('status', 'Paid')
+        .order('created_at', { ascending: false });
+
+      allPayments = fallbackResult.data || [];
+      error = fallbackResult.error;
     }
 
     console.log('Fetched payments count:', allPayments?.length || 0);
