@@ -126,7 +126,36 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true, role: 'admin' });
 
-    const supabase = createServerClient(
+    // Use standard JS client for signInWithPassword to prevent @supabase/ssr fetch failed errors on Vercel
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    let data;
+    let error;
+    try {
+      ({ data, error } = await authClient.auth.signInWithPassword({
+        email: loginEmail,
+        password,
+      }));
+    } catch (authError: any) {
+      console.error('[AUTH:LOGIN] Authentication provider request failed:', authError?.message);
+      return NextResponse.json(
+        { error: authError?.message || 'Authentication failed. Please check your credentials.' },
+        { status: 401 }
+      );
+    }
+
+    if (error || !data?.session) {
+      console.error(`[AUTH:LOGIN] FAILED: Supabase signInWithPassword error: ${error?.message || 'No session'}`);
+      return NextResponse.json(
+        { error: isStudentId ? 'Invalid username or password' : (error?.message || 'Invalid login credentials') },
+        { status: 401 }
+      );
+    }
+
+    // Now set cookies on the response using createServerClient setSession
+    const supabaseServer = createServerClient(
       supabaseUrl,
       supabaseAnonKey,
       {
@@ -144,43 +173,14 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Calling Supabase signInWithPassword with email="${loginEmail}"`);
-
-    let data;
-    let error;
     try {
-      ({ data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password,
-      }));
-    } catch (authError: any) {
-      console.error('[AUTH:LOGIN] Authentication provider request failed:', authError?.message);
-      return NextResponse.json(
-        { error: 'Authentication service is temporarily unavailable. Please try again shortly.' },
-        { status: 503 }
-      );
+      await supabaseServer.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+    } catch (e) {
+      console.warn('[AUTH:LOGIN] Warning setting session cookies:', e);
     }
-
-    if (error) {
-      console.error(`[AUTH:LOGIN] FAILED: Supabase signInWithPassword error: ${error.message} (code: ${error.status}, name: ${error.name})`);
-      if (typeof error.status === 'number' && error.status >= 500) {
-        return NextResponse.json(
-          { error: 'Authentication service is temporarily unavailable. Please try again shortly.' },
-          { status: 503 }
-        );
-      }
-      return NextResponse.json(
-        { error: isStudentId ? 'Invalid username or password' : error.message },
-        { status: 401 }
-      );
-    }
-
-    if (!data.session) {
-      console.error(`[AUTH:LOGIN] FAILED: No session returned from Supabase signInWithPassword`);
-      return NextResponse.json({ error: 'Login failed' }, { status: 401 });
-    }
-
-    if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Supabase sign-in OK. userId=${data.user.id}, session expires at ${data.session.expires_at}`);
 
     // Determine role — check admin_profiles first, then student_profiles
     const userId = data.user.id;
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
 
       if (studentRecord && studentRecord.status === 'pending_approval') {
         console.log(`[AUTH:LOGIN] Student "${studentRecord.name}" blocked - pending approval`);
-        await supabase.auth.signOut();
+        await supabaseServer.auth.signOut();
         return NextResponse.json({ error: 'Your account is pending admin approval. Please try again later.' }, { status: 403 });
       }
       
