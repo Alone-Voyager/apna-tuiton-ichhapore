@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL as supabaseUrl, SUPABASE_ANON_KEY as supabaseAnonKey, SUPABASE_SERVICE_ROLE_KEY as supabaseServiceRoleKey } from '@/lib/supabase/config';
 
 /**
  * POST /api/auth/login
@@ -34,8 +35,6 @@ export async function POST(request: NextRequest) {
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] isStudentId=${isStudentId} (email contains @ = ${!isStudentId})`);
 
     const bcrypt = require('bcryptjs');
-
-    const { SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: supabaseAnonKey, SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRoleKey } = require('../../../../lib/supabase/config');
 
     // Service-role credentials must remain server-only and must never be placed in
     // a NEXT_PUBLIC_* variable, which Next.js embeds in browser bundles.
