@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
     const TEMP_PASSWORD = 'student123';
 
     const supabaseAdmin = createServerClient(
-      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA1OTM1OCwiZXhwIjoyMDc3NjM1MzU4fQ.GI0n5RGF540FQvGm9N9P5wfQrLnOycM_hKZ2dQeDAEI'!,
       { cookies: { get() { return undefined; }, set() {}, remove() {} } }
     );
 
@@ -223,8 +223,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabaseAdmin = createServerClient(
-      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA1OTM1OCwiZXhwIjoyMDc3NjM1MzU4fQ.GI0n5RGF540FQvGm9N9P5wfQrLnOycM_hKZ2dQeDAEI'!,
       { cookies: { get() { return undefined; }, set() {}, remove() {} } }
     );
 
