@@ -45,11 +45,11 @@ export async function GET(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id, id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('GET /api/attendance/daily - Error fetching user profile:', userError);
       return NextResponse.json(
         { error: 'Organization not found' },
@@ -221,11 +221,11 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id and admin profile id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id, id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('POST /api/attendance/daily - Error fetching user profile:', userError);
       return NextResponse.json(
         { error: 'Organization not found' },

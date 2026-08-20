@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
 
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id, role')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 

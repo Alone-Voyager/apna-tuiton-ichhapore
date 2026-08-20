@@ -55,7 +55,7 @@ export async function DELETE(
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('DELETE /api/students/[id] - Error fetching user profile:', userError);
       return NextResponse.json(
         { error: 'Organization not found' },
@@ -290,11 +290,11 @@ export async function PATCH(
     // Get user's organization_id from the admin_profiles table
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json(
         { error: 'User organization not found' },
         { status: 403 }
@@ -331,7 +331,7 @@ export async function PATCH(
     // Verify student belongs to the organization
     const { data: existingStudent, error: studentError } = await supabase
       .from('students')
-      .select('id, organization_id')
+      .select('*')
       .eq('id', studentId)
       .eq('organization_id', organizationId)
       .single();

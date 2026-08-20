@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id using supabaseAdmin
     const { data: userData, error: userError } = await supabaseAdmin
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       userError: userError?.message 
     });
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 

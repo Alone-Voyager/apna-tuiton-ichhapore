@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] Checking admin_profiles for userId=${userId}`);
     const { data: adminProfile, error: adminErr } = await supabaseAdmin
       .from('admin_profiles')
-      .select('role, organization_id')
+      .select('role')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -282,26 +282,21 @@ export async function POST(request: NextRequest) {
       return roleResponse;
     }
 
-    // Authenticated but no profile — auto-heal user by creating admin_profile linked to default org
+    // Authenticated but no profile — auto-heal user by creating admin_profile
     if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] No profile found, auto-healing user ${userId} to admin_profiles`);
-    const { data: defaultOrg } = await supabaseAdmin
-      .from('organizations')
-      .select('id')
-      .limit(1)
-      .maybeSingle();
-
-    if (defaultOrg?.id) {
-      try {
-        await supabaseAdmin.from('admin_profiles').upsert(
-          {
-            user_id: userId,
-            organization_id: defaultOrg.id,
-            role: 'admin',
-            is_active: true,
-          },
-          { onConflict: 'user_id' }
-        );
-      } catch (e) {}
+    try {
+      await supabaseAdmin.from('admin_profiles').upsert(
+        {
+          user_id: userId,
+          email: loginEmail,
+          full_name: loginEmail.split('@')[0],
+          role: 'admin',
+          is_active: true,
+        },
+        { onConflict: 'user_id' }
+      );
+    } catch (e) {
+      console.warn('[AUTH:LOGIN] auto-heal admin_profiles upsert failed:', e);
     }
 
     const roleResponse = NextResponse.json({

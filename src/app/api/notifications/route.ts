@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('[Create Notification] Organization lookup failed:', userError);
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }

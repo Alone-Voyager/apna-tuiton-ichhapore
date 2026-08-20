@@ -69,34 +69,15 @@ export async function getRequestOrgContext(request?: NextRequest) {
 
   if (user?.id) {
     try {
-      const { data: adminProfile } = await supabaseAdmin
+      // Try to get organization_id from admin_profiles (column may not exist in DB)
+      const { data: adminProfile, error: apErr } = await supabaseAdmin
         .from('admin_profiles')
-        .select('organization_id')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (adminProfile?.organization_id) {
+      if (!apErr && adminProfile && 'organization_id' in adminProfile && adminProfile.organization_id) {
         organizationId = adminProfile.organization_id;
-      } else {
-        const { data: studentProfile } = await supabaseAdmin
-          .from('student_profiles')
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (studentProfile?.organization_id) {
-          organizationId = studentProfile.organization_id;
-        } else {
-          const { data: fallbackOrg } = await supabaseAdmin
-            .from('organizations')
-            .select('id')
-            .limit(1)
-            .maybeSingle();
-
-          if (fallbackOrg?.id) {
-            organizationId = fallbackOrg.id;
-          }
-        }
       }
     } catch (e) {
       console.warn('getRequestOrgContext org lookup failed:', e);

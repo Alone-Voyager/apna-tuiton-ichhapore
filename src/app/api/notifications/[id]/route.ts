@@ -45,7 +45,7 @@ export async function PUT(
     // Get admin profile with organization_id
     const { data: adminProfile, error: profileError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
@@ -184,7 +184,7 @@ export async function DELETE(
     // Get admin profile with organization_id
     const { data: adminProfile, error: profileError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 

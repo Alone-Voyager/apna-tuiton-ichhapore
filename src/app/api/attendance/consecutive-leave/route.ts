@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     // Get organization_id from query params or session
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organization_id') || userOrgId;
+    const useOrgFilter = organizationId && organizationId !== 'default-org';
     
     if (!organizationId) {
       return NextResponse.json(

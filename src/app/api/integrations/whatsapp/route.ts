@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
     // Get user's organization
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
@@ -140,11 +140,11 @@ export async function POST(request: NextRequest) {
     // Get user's organization and admin profile
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id, id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
@@ -237,11 +237,11 @@ export async function PATCH(request: NextRequest) {
     // Get user's organization
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 

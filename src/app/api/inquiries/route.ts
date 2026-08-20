@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 

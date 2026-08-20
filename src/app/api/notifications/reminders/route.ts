@@ -43,11 +43,11 @@ export async function GET(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('[GET Reminders] Organization lookup failed:', userError);
       console.error('[GET Reminders] User ID:', user.id);
       console.warn('[GET Reminders] No admin profile found. User needs to be added to admin_profiles table.');
@@ -123,13 +123,13 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id
     const { data: userData, error: userError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
     console.log('[POST Reminders] Admin profile lookup:', { userData, userError });
 
-    if (userError || !userData?.organization_id) {
+    if (userError || !userData) {
       console.error('[POST Reminders] ❌ Organization lookup failed!');
       console.error('[POST Reminders] Error details:', userError);
       console.error('[POST Reminders] User needs record in admin_profiles table with id:', user.id);

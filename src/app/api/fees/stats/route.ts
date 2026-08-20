@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     let userData = null;
     const { data: adminProfile } = await supabaseAdmin
       .from('admin_profiles')
-      .select('organization_id, role')
+      .select('*')
       .eq('user_id', user.id)
       .maybeSingle();
 

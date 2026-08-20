@@ -8,8 +8,9 @@ import { syncStudentFeePayments } from '../../../lib/fees-service';
 export async function GET(request: NextRequest) {
   try {
     const { supabase, user, organizationId } = await getRequestOrgContext(request);
+    const useOrgFilter = organizationId && organizationId !== 'default-org';
 
-    if (!user || !organizationId) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -140,8 +141,9 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createRouteSupabaseClient(request);
     const { user, organizationId } = await getRequestOrgContext(request);
+    const useOrgFilter = organizationId && organizationId !== 'default-org';
 
-    if (!user || !organizationId) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

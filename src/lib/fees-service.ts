@@ -192,24 +192,26 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
  * Synchronizes fee payments for ALL active students in an organization.
  * Used for organization-wide stats synchronization and bulk fee generation.
  */
-export async function syncAllStudentFeePayments(supabase: any, organizationId: string, currentDate: Date = new Date()) {
+export async function syncAllStudentFeePayments(supabase: any, organizationId?: string, currentDate: Date = new Date()) {
   try {
     // 1. Fetch all active students
-    const { data: students, error: studentsError } = await supabase
+    let studentsQuery = supabase
       .from('students')
       .select('id, admission_date, monthly_fee, name')
-      .eq('organization_id', organizationId)
       .eq('is_active', true);
+    if (organizationId) studentsQuery = studentsQuery.eq('organization_id', organizationId);
+    const { data: students, error: studentsError } = await studentsQuery;
 
     if (studentsError || !students || students.length === 0) {
       return;
     }
 
     // 2. Fetch all unpaid fee payments for the organization
-    const { data: allUnpaid, error: unpaidError } = await supabase
+    let unpaidQuery = supabase
       .from('fee_payments')
-      .select('*')
-      .eq('organization_id', organizationId);
+      .select('*');
+    if (organizationId) unpaidQuery = unpaidQuery.eq('organization_id', organizationId);
+    const { data: allUnpaid, error: unpaidError } = await unpaidQuery;
 
     if (unpaidError) {
       console.error('Error fetching unpaid payments for sync:', unpaidError);
@@ -217,10 +219,11 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId: s
     }
 
     // 3. Fetch all paid fee histories for the organization
-    const { data: allPaid, error: paidError } = await supabase
+    let paidQuery = supabase
       .from('fee_payment_history')
-      .select('student_id, payment_month')
-      .eq('organization_id', organizationId);
+      .select('student_id, payment_month');
+    if (organizationId) paidQuery = paidQuery.eq('organization_id', organizationId);
+    const { data: allPaid, error: paidError } = await paidQuery;
 
     if (paidError) {
       console.error('Error fetching paid history for sync:', paidError);

@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
     // Get user's organization_id and admin profile
     const { data: adminProfile, error: userError } = await supabase
       .from('admin_profiles')
-      .select('id, organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (userError || !adminProfile?.organization_id) {
+    if (userError || !adminProfile) {
       console.error('Error fetching admin profile:', userError);
       return NextResponse.json(
         { error: 'Organization not found' },

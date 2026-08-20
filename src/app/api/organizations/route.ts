@@ -7,8 +7,9 @@ import { getRequestOrgContext } from '../../../lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const { user, organizationId } = await getRequestOrgContext(request);
+    const useOrgFilter = organizationId && organizationId !== 'default-org';
 
-    if (!user || !organizationId) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -50,8 +51,9 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { user, organizationId } = await getRequestOrgContext(request);
+    const useOrgFilter = organizationId && organizationId !== 'default-org';
 
-    if (!user || !organizationId) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     // Get admin profile to get organization_id
     const { data: profileData, error: profileError } = await supabase
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
     

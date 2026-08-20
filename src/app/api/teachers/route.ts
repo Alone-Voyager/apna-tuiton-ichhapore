@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     // Resolve the organization_id for this admin
     const { data: profile, error: profileErr } = await supabaseAdmin
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', userId)
       .limit(1)
       .single()
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
     // Resolve organization_id for this admin
     const { data: profile, error: profileErr } = await supabaseAdmin
       .from('admin_profiles')
-      .select('organization_id')
+      .select('*')
       .eq('user_id', userId)
       .limit(1)
       .single()
