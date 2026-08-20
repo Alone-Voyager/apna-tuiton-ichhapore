@@ -11,9 +11,7 @@ function sanitize(val?: string, fallback = ''): string {
 }
 
 function ensureBrowserEnv(): { url: string; key: string } {
-  const url = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL, DEFAULT_SUPABASE_URL);
-  const key = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, DEFAULT_ANON_KEY);
-  return { url, key };
+  return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_ANON_KEY };
 }
 
 let _browserClient: ReturnType<typeof createBrowserClient> | null = null;
@@ -41,9 +39,7 @@ export const supabase: any = new Proxy({}, {
 });
 
 function ensureServerEnv(): { url: string; key: string } {
-  const url = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL, DEFAULT_SUPABASE_URL);
-  const key = sanitize(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY, DEFAULT_SERVICE_ROLE_KEY);
-  return { url, key };
+  return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SERVICE_ROLE_KEY };
 }
 
 let _adminClient: ReturnType<typeof createClient> | null = null;

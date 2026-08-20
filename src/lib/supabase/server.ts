@@ -17,10 +17,8 @@ function extractBearerToken(request?: NextRequest) {
 }
 
 export async function createRouteSupabaseClient(request?: NextRequest) {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const supabaseUrl = (!rawUrl || rawUrl.includes('gvhguudtztutbxwolsxd')) ? DEFAULT_SUPABASE_URL : rawUrl;
-  const supabaseAnonKey = (!rawKey || rawKey.includes('gvhguudtztutbxwolsxd')) ? DEFAULT_ANON_KEY : rawKey;
+  const supabaseUrl = DEFAULT_SUPABASE_URL;
+  const supabaseAnonKey = DEFAULT_ANON_KEY;
 
   const bearerToken = extractBearerToken(request);
   if (bearerToken) {
