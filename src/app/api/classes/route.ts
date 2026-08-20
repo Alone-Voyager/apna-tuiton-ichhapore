@@ -1,67 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getRequestOrgContext } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/client';
 
 // GET /api/classes - Fetch all classes for the organization
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const { user } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg',
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    const db = supabaseAdmin;
 
-    if (userError || !userData) {
-      console.error('GET /api/classes - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
-
-    // Fetch classes for the organization
-    const { data: classes, error: classesError } = await supabase
+    // Fetch classes
+    const { data: classes, error: classesError } = await db
       .from('classes')
       .select('*')
-      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
       .eq('is_active', true)
       .order('name', { ascending: true });
 
@@ -74,9 +32,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate actual attendance percentage for each class from the attendance table
-    const classesWithAttendance = await Promise.all((classes || []).map(async (classInfo) => {
+    const classesWithAttendance = await Promise.all((classes || []).map(async (classInfo: any) => {
       // Get all active students in this class
-      const { data: students, error: studentsError } = await supabase
+      const { data: students, error: studentsError } = await db
         .from('students')
         .select('id')
         .eq('class_id', classInfo.id)
@@ -86,13 +44,13 @@ export async function GET(request: NextRequest) {
         return { ...classInfo, avg_attendance: 0 };
       }
 
-      const studentIds = students.map(s => s.id);
+      const studentIds = students.map((s: any) => s.id);
 
       // Get attendance records for these students (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const { data: attendanceRecords, error: attendanceError } = await supabase
+      const { data: attendanceRecords, error: attendanceError } = await db
         .from('attendance')
         .select('student_id, status')
         .in('student_id', studentIds)
@@ -103,7 +61,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate attendance percentage
-      const presentCount = attendanceRecords.filter(record => 
+      const presentCount = attendanceRecords.filter((record: any) => 
         record.status === 'Present' || record.status === 'Late' || record.status === 'Half Day'
       ).length;
       const totalRecords = attendanceRecords.length;
@@ -113,7 +71,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // Return the response with the classes data
-    return NextResponse.json({ success: true, data: classesWithAttendance || [] }, { status: 200, headers: response.headers });
+    return NextResponse.json({ success: true, data: classesWithAttendance || [] }, { status: 200 });
   } catch (error) {
     console.error('Unexpected error in GET /api/classes:', error);
     return NextResponse.json(
@@ -126,58 +84,16 @@ export async function GET(request: NextRequest) {
 // POST /api/classes - Create a new class
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    const { user, organizationId } = await getRequestOrgContext(request);
 
-    const supabase = createServerClient(
-      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg',
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      console.error('POST /api/classes - Error fetching user profile:', userError);
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
+    const db = supabaseAdmin;
 
     // Parse request body
     const body = await request.json();
@@ -199,13 +115,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new class
-    const { data: newClass, error: insertError } = await supabase
+    const insertPayload: any = {
+      name: name.trim(),
+      monthly_fee: Number(monthly_fee),
+    };
+    if (organizationId && organizationId !== 'default-org') {
+      insertPayload.organization_id = organizationId;
+    }
+
+    const { data: newClass, error: insertError } = await db
       .from('classes')
-      .insert({
-        organization_id: userData.organization_id,
-        name: name.trim(),
-        monthly_fee: Number(monthly_fee),
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -227,7 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the response with the new class data
-    return NextResponse.json({ class: newClass }, { status: 201, headers: response.headers });
+    return NextResponse.json({ class: newClass }, { status: 201 });
   } catch (error) {
     console.error('Unexpected error in POST /api/classes:', error);
     return NextResponse.json(

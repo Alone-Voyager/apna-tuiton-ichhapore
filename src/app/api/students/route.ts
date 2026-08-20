@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     const feeStatus = searchParams.get('fee_status'); // 'paid' or 'overdue'
     const missingInfo = searchParams.get('missing_info'); // 'true' to filter students with missing parent_name or whatsapp
 
-    // Build query
-    let query = supabase
+    // Build query using supabaseAdmin to bypass RLS
+    let query = supabaseAdmin
       .from('students')
       .select('*, classes(id, name, monthly_fee)')
       // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
@@ -71,15 +71,15 @@ export async function GET(request: NextRequest) {
 
     if (feeStatus === 'paid') {
       // Fetch students who have paid fees from fee_payment_history
-      const { data: paidPayments, error: paidError } = await supabase
+      const { data: paidPayments, error: paidError } = await supabaseAdmin
         .from('fee_payment_history')
         .select('student_id, payment_month')
         // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
-        .in('student_id', enrichedStudents.map(s => s.id));
+        .in('student_id', enrichedStudents.map((s: any) => s.id));
 
       if (!paidError && paidPayments) {
         // Group payment months by student
-        const paymentsByStudent = paidPayments.reduce((acc: any, payment) => {
+        const paymentsByStudent = paidPayments.reduce((acc: any, payment: any) => {
           if (!acc[payment.student_id]) {
             acc[payment.student_id] = [];
           }
@@ -89,8 +89,8 @@ export async function GET(request: NextRequest) {
 
         // Filter students who have at least one paid payment and add payment months
         enrichedStudents = enrichedStudents
-          .filter(student => paymentsByStudent[student.id])
-          .map(student => ({
+          .filter((student: any) => paymentsByStudent[student.id])
+          .map((student: any) => ({
             ...student,
             fee_status: 'paid' as const,
             payment_months: paymentsByStudent[student.id] || []
@@ -98,16 +98,16 @@ export async function GET(request: NextRequest) {
       }
     } else if (feeStatus === 'overdue') {
       // Fetch students with overdue fees from fee_payments
-      const { data: overduePayments, error: overdueError } = await supabase
+      const { data: overduePayments, error: overdueError } = await supabaseAdmin
         .from('fee_payments')
         .select('student_id, payment_month, status')
         // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
         .eq('status', 'Overdue')
-        .in('student_id', enrichedStudents.map(s => s.id));
+        .in('student_id', enrichedStudents.map((s: any) => s.id));
 
       if (!overdueError && overduePayments) {
         // Group overdue months by student
-        const overdueByStudent = overduePayments.reduce((acc: any, payment) => {
+        const overdueByStudent = overduePayments.reduce((acc: any, payment: any) => {
           if (!acc[payment.student_id]) {
             acc[payment.student_id] = [];
           }
@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
 
         // Filter students who have at least one overdue payment and add overdue months
         enrichedStudents = enrichedStudents
-          .filter(student => overdueByStudent[student.id])
-          .map(student => ({
+          .filter((student: any) => overdueByStudent[student.id])
+          .map((student: any) => ({
             ...student,
             fee_status: 'overdue' as const,
             overdue_months: overdueByStudent[student.id] || []
