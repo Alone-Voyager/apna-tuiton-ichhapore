@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     console.log('⏰ Checking automated reminders...');
 
     // Get Supabase credentials with fallbacks
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co';
     const supabaseKey = 
       process.env.SUPABASE_SERVICE_ROLE_KEY || 
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||

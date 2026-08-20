@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const isStudentId = !email.includes('@');
     
     const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
       {
         cookies: {

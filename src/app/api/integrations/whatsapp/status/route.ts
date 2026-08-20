@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     // Use service role key for status check
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
     );
 

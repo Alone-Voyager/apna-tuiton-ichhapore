@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     const TEMP_PASSWORD = 'student123';
 
     const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
       { cookies: { get() { return undefined; }, set() {}, remove() {} } }
     );
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co'),
       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
       { cookies: { get() { return undefined; }, set() {}, remove() {} } }
     );

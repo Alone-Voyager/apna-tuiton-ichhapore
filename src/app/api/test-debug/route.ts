@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase/client';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cgbwcayquqpgbnyxnyzw.supabase.co';
     const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const hasServiceRoleKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
