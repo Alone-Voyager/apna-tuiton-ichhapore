@@ -187,19 +187,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash the password for the custom Users table
-    const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(password, 10);
-
     const currentYear = new Date().getFullYear();
     let studentNumber = (count || 0) + 1;
     let roll_number = `AT-${currentYear}-${studentNumber.toString().padStart(3, '0')}`;
-    let customUser = null;
-    let customUserError = null;
 
-    // Retry loop to guarantee a UNIQUE username entry into the Users table
+    // Check roll_number uniqueness against students table
     while (true) {
-      const result = await (supabaseAdmin as any)
+      const { data: existingStudent } = await supabaseAdmin
+        .from('students')
+        .select('id')
+        .eq('roll_number', roll_number)
+        .maybeSingle();
+
+      if (existingStudent) {
+        studentNumber++;
+        roll_number = `AT-${currentYear}-${studentNumber.toString().padStart(3, '0')}`;
+        continue;
+      }
+      break;
+    }
+
+    // Try optional insert into custom users table if present
+    let customUser: any = null;
+    try {
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+      const { data: uData } = await (supabaseAdmin as any)
         .from('users')
         .insert({
           username: roll_number,
@@ -208,30 +221,14 @@ export async function POST(request: NextRequest) {
           status: status
         })
         .select('id')
-        .single();
-
-      if (result.error && result.error.code === '23505') {
-        // Unique violation, increment and retry
-        studentNumber++;
-        roll_number = `AT-${currentYear}-${studentNumber.toString().padStart(3, '0')}`;
-        continue;
-      }
-
-      customUser = result.data;
-      customUserError = result.error;
-      break;
-    }
-
-    if (customUserError) {
-      console.error('Error creating custom user:', customUserError);
-      return NextResponse.json({ error: `Failed to create student account credentials: ${customUserError.message}` }, { status: 500 });
+        .maybeSingle();
+      customUser = uData;
+    } catch (e: any) {
+      console.warn('Optional users table insert skipped:', e?.message);
     }
 
     // Attempt to create the user in Supabase Auth (for sessions)
-    // We use a safe dummy email based on the generated Student ID
     const studentEmail = `${roll_number.toLowerCase()}@apnatuition.local`;
-
-    // Create Supabase Auth User
     const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email: studentEmail,
       password: password,
@@ -242,9 +239,7 @@ export async function POST(request: NextRequest) {
     let authUserId = authUser?.user?.id;
 
     if (createUserError) {
-      console.error('Failed to create Supabase Auth user (may already exist or configuration error):', createUserError.message);
-      // Even if this fails (e.g. edge case), we'll gracefully continue so the student is admitted 
-      // They can login via custom users table if we configure login accurately.
+      console.warn('Supabase Auth user creation notice:', createUserError.message);
     }
 
     // Validate class_id if provided
@@ -253,7 +248,6 @@ export async function POST(request: NextRequest) {
         .from('classes')
         .select('id')
         .eq('id', class_id)
-        // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
         .eq('is_active', true)
         .single();
 
@@ -278,7 +272,7 @@ export async function POST(request: NextRequest) {
       status: status,
       notes: notes || null,
       is_active: status === 'active',
-      user_id: customUser.id,
+      user_id: customUser?.id || null,
       temp_password_used: false
     };
 
