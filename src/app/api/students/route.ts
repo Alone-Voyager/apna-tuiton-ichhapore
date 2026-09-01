@@ -259,14 +259,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Format gender for DB check constraint (Male, Female, Other)
+    const formattedGender = gender 
+      ? (gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase()) 
+      : null;
+
     // Insert new student
     const studentPayload: any = {
       name,
       class_id: class_id || null,
       roll_number,
       admission_date,
-      gender: gender || null,
+      gender: formattedGender,
       parent_name,
+      phone: whatsapp || 'N/A',
       whatsapp: whatsapp || null,
       monthly_fee: Number(monthly_fee),
       status: status,
@@ -363,7 +369,7 @@ export async function POST(request: NextRequest) {
       ? `New student "${name}" admitted to ${(newStudent as any).classes?.name || 'class'}`
       : `New student "${name}" admitted`;
 
-    const { error: logError } = await supabase
+    const { error: logError } = await supabaseAdmin
       .from('activity_logs')
       .insert({
         organization_id: organizationId,
