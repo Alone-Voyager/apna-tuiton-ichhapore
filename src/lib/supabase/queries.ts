@@ -75,19 +75,21 @@ export async function getStudentDetailsWithFees(id: string) {
     console.error('Error fetching overdue payments:', overdueError);
   }
 
-  // Fetch payment history (total paid) from fee_payment_history table
-  const { data: paymentHistory, error: historyError } = await supabase
-    .from('fee_payment_history')
-    .select('paid_amount, discount, late_fee')
-    .eq('student_id', id);
+  // Fetch payment history (total paid) from fee_payments table with status=Paid
+  // Avoids querying the non-existent fee_payment_history table
+  const { data: paidPayments, error: paidError } = await supabase
+    .from('fee_payments')
+    .select('paid_amount')
+    .eq('student_id', id)
+    .eq('status', 'Paid');
 
-  if (historyError) {
-    console.error('Error fetching payment history:', historyError);
+  if (paidError) {
+    console.error('Error fetching paid payments:', paidError);
   }
 
   // Calculate fee statistics
-  const totalPaid = paymentHistory?.reduce(
-    (sum: number, p: { paid_amount: any; late_fee: any; discount: any; }) => sum + Number(p.paid_amount || 0) + Number(p.late_fee || 0) - Number(p.discount || 0),
+  const totalPaid = paidPayments?.reduce(
+    (sum: number, p: { paid_amount: any }) => sum + Number(p.paid_amount || 0),
     0
   ) || 0;
 
@@ -104,7 +106,7 @@ export async function getStudentDetailsWithFees(id: string) {
       pendingAmount,
       pendingMonths,
       feePayments: overduePayments || [],
-      paymentHistory: paymentHistory || []
+      paymentHistory: paidPayments || []
     },
     error: null
   };
