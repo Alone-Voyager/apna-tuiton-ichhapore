@@ -175,10 +175,9 @@ export async function POST(request: NextRequest) {
 
     // Auto-generate roll number
     // Get the count of students in the organization to generate a unique roll number
-    const { count, error: countError } = await supabase
+    const { count, error: countError } = await supabaseAdmin
       .from('students')
-      .select('*', { count: 'exact', head: true })
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
+      .select('*', { count: 'exact', head: true });
 
     if (countError) {
       console.error('Error counting students:', countError);
@@ -250,7 +249,7 @@ export async function POST(request: NextRequest) {
 
     // Validate class_id if provided
     if (class_id) {
-      const { data: classData, error: classError } = await supabase
+      const { data: classData, error: classError } = await supabaseAdmin
         .from('classes')
         .select('id')
         .eq('id', class_id)
@@ -260,31 +259,36 @@ export async function POST(request: NextRequest) {
 
       if (classError || !classData) {
         return NextResponse.json(
-          { error: 'Invalid class selected or class does not belong to your organization' },
+          { error: 'Invalid class selected' },
           { status: 400 }
         );
       }
     }
 
     // Insert new student
-    const { data: newStudent, error: insertError } = await supabase
+    const studentPayload: any = {
+      name,
+      class_id: class_id || null,
+      roll_number,
+      admission_date,
+      gender: gender || null,
+      parent_name,
+      whatsapp: whatsapp || null,
+      monthly_fee: Number(monthly_fee),
+      status: status,
+      notes: notes || null,
+      is_active: status === 'active',
+      user_id: customUser.id,
+      temp_password_used: false
+    };
+
+    if (organizationId && organizationId !== 'default-org') {
+      studentPayload.organization_id = organizationId;
+    }
+
+    const { data: newStudent, error: insertError } = await supabaseAdmin
       .from('students')
-      .insert({
-        organization_id: organizationId,
-        name,
-        class_id: class_id || null,
-        roll_number,
-        admission_date,
-        gender: gender || null,
-        parent_name,
-        whatsapp: whatsapp || null,
-        monthly_fee: Number(monthly_fee),
-        status: status,
-        notes: notes || null,
-        is_active: status === 'active',
-        user_id: customUser.id,
-        temp_password_used: false
-      })
+      .insert(studentPayload)
       .select('*, classes(name)')
       .single();
 
@@ -307,14 +311,17 @@ export async function POST(request: NextRequest) {
 
     // Create student_profiles link if Auth user was created (to maintain existing dashboards)
     if (authUserId) {
-      const { error: profileError } = await (supabaseAdmin as any).from('student_profiles').insert({
+      const profilePayload: any = {
         user_id: authUserId,
         student_id: newStudent.id,
-        organization_id: organizationId,
         email: studentEmail,
         is_active: status === 'active',
         must_change_password: true
-      });
+      };
+      if (organizationId && organizationId !== 'default-org') {
+        profilePayload.organization_id = organizationId;
+      }
+      const { error: profileError } = await (supabaseAdmin as any).from('student_profiles').insert(profilePayload);
       if (profileError) {
         console.error('Error creating student profile:', profileError);
       }
@@ -323,7 +330,7 @@ export async function POST(request: NextRequest) {
     // Update class student count if class_id is provided
     if (class_id) {
       // Get current student count
-      const { data: classData, error: classError } = await supabase
+      const { data: classData, error: classError } = await supabaseAdmin
         .from('classes')
         .select('total_students')
         .eq('id', class_id)
@@ -331,7 +338,7 @@ export async function POST(request: NextRequest) {
 
       if (!classError && classData) {
         // Increment the count
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('classes')
           .update({
             total_students: (classData.total_students || 0) + 1
@@ -346,14 +353,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get admin profile ID for activity log
-    const { data: adminProfile } = await supabase
+    const { data: adminProfile } = await supabaseAdmin
       .from('admin_profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Sync fee payments starting from the custom admission date up to the current month using calendar logic
-    await syncStudentFeePayments(supabase, newStudent.id);
+    await syncStudentFeePayments(supabaseAdmin, newStudent.id);
 
     // Log activity
     const activityDescription = class_id
