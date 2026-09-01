@@ -271,10 +271,12 @@ export async function POST(request: NextRequest) {
       monthly_fee: Number(monthly_fee),
       status: status,
       notes: notes || null,
-      is_active: status === 'active',
-      user_id: customUser?.id || null,
-      temp_password_used: false
+      is_active: status === 'active'
     };
+
+    if (customUser?.id) {
+      studentPayload.user_id = customUser.id;
+    }
 
     if (organizationId && organizationId !== 'default-org') {
       studentPayload.organization_id = organizationId;
