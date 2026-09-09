@@ -68,7 +68,11 @@ export async function POST(request: NextRequest) {
 
     if (studentError || !studentData) {
       console.error('Error fetching student:', studentError);
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'Student not found', 
+        details: studentError || 'studentData is null',
+        id_received: student_id
+      }, { status: 404 });
     }
 
     // Get the existing fee payment record

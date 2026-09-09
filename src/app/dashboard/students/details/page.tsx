@@ -29,6 +29,8 @@ interface Student {
   totalPendingMonths: number
   pendingAmount: number
   totalPaid: number
+  attendanceRate: number
+  fee_payments?: any[]
   pendingMonths: string[]
   status: 'active' | 'inactive' | 'alumni' | 'suspended'
   is_active?: boolean
@@ -329,6 +331,7 @@ function StudentDetailsContent() {
                 monthlyFee={student.monthly_fee}
                 studentStatus={student.status}
                 isActive={student.is_active}
+                feePayments={student.fee_payments}
               />
             )}
 

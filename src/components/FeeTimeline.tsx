@@ -20,9 +20,10 @@ interface FeeTimelineProps {
   monthlyFee?: number
   studentStatus?: 'active' | 'inactive' | 'suspended' | 'alumni'
   isActive?: boolean
+  feePayments?: any[]
 }
 
-export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatus, isActive }: FeeTimelineProps) {
+export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatus, isActive, feePayments: initialFeePayments }: FeeTimelineProps) {
   const [records, setRecords] = useState<FeeRecord[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -35,6 +36,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
         // Fetch student admission date if not provided
         let startDate = admissionDate
+        let currentMonthlyFee = monthlyFee
         if (!startDate) {
           const { data: studentData } = await supabase
             .from('students')
@@ -44,7 +46,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
 
           if (studentData) {
             startDate = studentData.admission_date
-            monthlyFee = monthlyFee || studentData.monthly_fee
+            currentMonthlyFee = currentMonthlyFee || studentData.monthly_fee
           }
         }
 
@@ -69,29 +71,24 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           endYear = currentYear + 1
         }
 
-        // Fetch payment history safely
-        const { data: paymentHistory } = await supabase
-          .from('fee_payment_history')
-          .select('payment_month')
-          .eq('student_id', studentId)
-          .then((res: any) => res)
-          .catch(() => ({ data: [] }));
-
-        // Fetch fee payments (check for overdue status)
-        const { data: feePayments } = await supabase
-          .from('fee_payments')
-          .select('payment_month, status')
-          .eq('student_id', studentId)
-          .then((res: any) => res)
-          .catch(() => ({ data: [] }));
+        // Use passed feePayments if available, otherwise fetch from fee_payments
+        let feePaymentsData = initialFeePayments;
+        if (!feePaymentsData) {
+          const { data } = await supabase
+            .from('fee_payments')
+            .select('payment_month, status')
+            .eq('student_id', studentId)
+            .then((res: any) => res)
+            .catch(() => ({ data: [] }));
+          feePaymentsData = data;
+        }
 
         // Create lookup maps (using lowercase keys for case-insensitive lookup)
-        const paidMonths = new Set([
-          ...(paymentHistory?.map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []),
-          ...(feePayments?.filter((p: { status: string }) => p.status === 'Paid').map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || [])
-        ])
+        const paidMonths = new Set(
+          feePaymentsData?.filter((p: { status: string }) => p.status === 'Paid').map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []
+        )
         const pendingFeeMonths = new Set(
-          feePayments
+          feePaymentsData
             ?.filter((p: { status: string }) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status))
             .map((p: { payment_month: string }) => p.payment_month.toLowerCase()) || []
         )
