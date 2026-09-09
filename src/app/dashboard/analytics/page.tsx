@@ -1,12 +1,23 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Download, User, DollarSign, CheckCheck, Calendar, AlertTriangle, UserPlus, UserMinus, TrendingUp, BarChart2, ArrowUp, ArrowDown, BanknoteIcon, PieChart } from 'lucide-react';
 export default function Analytics() {
-  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentData, setCurrentData] = useState({
+    totalStudents: 0,
+    totalRevenue: 0,
+    collectedFees: 0,
+    expectedFees: 0,
+    pendingFees: 0,
+    newAdmissions: 0,
+    leftStudents: 0,
+    collectionRate: 0,
+  });
 
   const analyticsPeriods = [
     { value: 'today', label: 'Today' },
@@ -18,67 +29,75 @@ export default function Analytics() {
     { value: 'custom', label: 'Custom Date' }
   ];
 
-  const getAnalyticsData = (period: string) => {
-    const baseData = {
-      today: {
-        totalStudents: 523,
-        totalRevenue: 8500,
-        collectedFees: 8500,
-        expectedFees: 12000,
-        pendingFees: 3500,
-        newAdmissions: 2,
-        leftStudents: 0
-      },
-      week: {
-        totalStudents: 523,
-        totalRevenue: 45600,
-        collectedFees: 42100,
-        expectedFees: 56000,
-        pendingFees: 13900,
-        newAdmissions: 8,
-        leftStudents: 1
-      },
-      month: {
-        totalStudents: 523,
-        totalRevenue: 1089200,
-        collectedFees: 1089200,
-        expectedFees: 1245600,
-        pendingFees: 156400,
-        newAdmissions: 28,
-        leftStudents: 3
-      },
-      '3months': {
-        totalStudents: 523,
-        totalRevenue: 3267600,
-        collectedFees: 2954000,
-        expectedFees: 3736800,
-        pendingFees: 469200,
-        newAdmissions: 85,
-        leftStudents: 12
-      },
-      '6months': {
-        totalStudents: 523,
-        totalRevenue: 6535200,
-        collectedFees: 5908000,
-        expectedFees: 7473600,
-        pendingFees: 938400,
-        newAdmissions: 156,
-        leftStudents: 28
-      },
-      year: {
-        totalStudents: 523,
-        totalRevenue: 13070400,
-        collectedFees: 11816000,
-        expectedFees: 14947200,
-        pendingFees: 1876800,
-        newAdmissions: 298,
-        leftStudents: 45
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ period: selectedPeriod });
+      if (selectedPeriod === 'custom' && customDateFrom && customDateTo) {
+        params.set('from', customDateFrom);
+        params.set('to', customDateTo);
       }
-    };
-    return baseData[period as keyof typeof baseData] || baseData.month;
-  };
 
-  const currentData = getAnalyticsData(selectedPeriod);
+      const [statsRes, feeRes] = await Promise.allSettled([
+        fetch(`/api/dashboard/stats?${params}`),
+        fetch(`/api/fees/stats?${params}`),
+      ]);
+
+      let stats: any = {};
+      let feeStats: any = {};
+
+      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+        const d = await statsRes.value.json();
+        stats = d.stats || d;
+      }
+      if (feeRes.status === 'fulfilled' && feeRes.value.ok) {
+        feeStats = await feeRes.value.json();
+      }
+
+      const collected = feeStats.totalCollected || feeStats.collected_amount || 0;
+      const expected = feeStats.totalExpected || feeStats.expected_amount || 0;
+      const pending = feeStats.totalPending || feeStats.pending_amount || (expected - collected) || 0;
+
+      setCurrentData({
+        totalStudents: stats.totalStudents || stats.total_students || 0,
+        totalRevenue: collected,
+        collectedFees: collected,
+        expectedFees: expected,
+        pendingFees: pending,
+        newAdmissions: stats.newAdmissions || stats.new_admissions || 0,
+        leftStudents: stats.inactiveStudents || 0,
+        collectionRate: expected > 0 ? Math.round((collected / expected) * 100) : 0,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPeriod, customDateFrom, customDateTo]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams({ format: 'csv' });
+      if (customDateFrom) params.set('from', customDateFrom);
+      if (customDateTo) params.set('to', customDateTo);
+      const res = await fetch(`/api/fees/export?${params}`);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics_report_${selectedPeriod}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('Export failed: ' + err.message);
+    }
+  };
 
   return (
     <div className="min-h-full bg-white">
@@ -96,17 +115,13 @@ export default function Analytics() {
                         Analytics Dashboard
                       </h1>
                       <p className="text-lg lg:text-xl text-blue-100">
-                        Detailed insights for 523 students across 15 classes
+                        {loading ? 'Loading...' : `Insights for ${currentData.totalStudents} students`}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3 text-center">
-                        <div className="text-xl font-bold">87.4%</div>
+                        <div className="text-xl font-bold">{loading ? '...' : `${currentData.collectionRate}%`}</div>
                         <div className="text-xs text-blue-200">Collection Rate</div>
-                      </div>
-                      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3 text-center">
-                        <div className="text-xl font-bold">91.2%</div>
-                        <div className="text-xs text-blue-200">Attendance</div>
                       </div>
                     </div>
                   </div>
@@ -143,7 +158,10 @@ export default function Analytics() {
                     </div>
                     
                     <div className="flex items-center space-x-3">
-                      <button className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-white hover:bg-white/20 transition-all whitespace-nowrap flex items-center">
+                      <button
+                        onClick={handleExport}
+                        className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-white hover:bg-white/20 transition-all whitespace-nowrap flex items-center"
+                      >
                         <Download className="mr-2 w-4 h-4" />Export Report
                       </button>
                     </div>

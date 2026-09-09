@@ -282,32 +282,13 @@ export async function POST(request: NextRequest) {
       return roleResponse;
     }
 
-    // Authenticated but no profile — auto-heal user by creating admin_profile
-    if (DEBUG_AUTH) console.log(`[AUTH:LOGIN] No profile found, auto-healing user ${userId} to admin_profiles`);
-    try {
-      await supabaseAdmin.from('admin_profiles').upsert(
-        {
-          user_id: userId,
-          email: loginEmail,
-          full_name: loginEmail.split('@')[0],
-          role: 'admin',
-          is_active: true,
-        },
-        { onConflict: 'user_id' }
-      );
-    } catch (e) {
-      console.warn('[AUTH:LOGIN] auto-heal admin_profiles upsert failed:', e);
-    }
-
-    const roleResponse = NextResponse.json({
-      success: true,
-      role: 'admin',
-      redirect: '/dashboard',
-    });
-    response.cookies.getAll().forEach(cookie => {
-      roleResponse.cookies.set(cookie.name, cookie.value);
-    });
-    return roleResponse;
+    // Authenticated but no profile — this is an error state, not auto-heal
+    console.error(`[AUTH:LOGIN] No profile found for user ${userId}. Rejecting login.`);
+    await supabaseServer.auth.signOut();
+    return NextResponse.json(
+      { error: 'Account setup incomplete. Please contact the administrator.' },
+      { status: 403 }
+    );
   } catch (error: any) {
     const elapsed = Date.now() - requestStart;
     console.error(`[AUTH:LOGIN] CRITICAL: Unhandled exception after ${elapsed}ms:`, {

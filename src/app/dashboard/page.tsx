@@ -100,13 +100,13 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Link href="/dashboard/fees" className="block active:scale-95 transition-transform">
-          <StatsCard title="Expected Revenue" value={loading ? '...' : `₹${stats.expectedMonthlyRevenue.toLocaleString('en-IN')}`} subtitle="Expected Monthly Income" icon={<TrendingUp className="w-5 h-5 text-blue-600" />} iconBg="bg-blue-50" />
+          <StatsCard title="Expected Revenue" value={loading ? '...' : `₹${(stats.expectedMonthlyRevenue ?? 0).toLocaleString('en-IN')}`} subtitle="Expected Monthly Income" icon={<TrendingUp className="w-5 h-5 text-blue-600" />} iconBg="bg-blue-50" />
         </Link>
         <Link href="/dashboard/students" className="block active:scale-95 transition-transform">
           <StatsCard title="Registered" value={loading ? '...' : stats.totalStudents.toString()} subtitle="Active Students" icon={<User className="w-5 h-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         </Link>
         <Link href="/dashboard/fees" className="block active:scale-95 transition-transform">
-          <StatsCard title="Outstanding" value={loading ? '...' : `₹${stats.totalOutstanding.toLocaleString('en-IN')}`} subtitle="Total Pending Dues" icon={<Wallet className="w-5 h-5 text-rose-600" />} iconBg="bg-rose-50" />
+          <StatsCard title="Outstanding" value={loading ? '...' : `₹${(stats.totalOutstanding ?? 0).toLocaleString('en-IN')}`} subtitle="Total Pending Dues" icon={<Wallet className="w-5 h-5 text-rose-600" />} iconBg="bg-rose-50" />
         </Link>
         <Link href="/dashboard/attendance/daily" className="block active:scale-95 transition-transform">
           <StatsCard title="Today's Attendance" value={loading ? '...' : `${stats.presentCount}/${stats.totalAttendanceRecords}`} subtitle="Click to view" icon={<CalendarCheck className="w-5 h-5 text-emerald-600" />} iconBg="bg-emerald-50" />

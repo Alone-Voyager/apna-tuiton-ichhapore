@@ -305,7 +305,7 @@ function FeesPageContent() {
 
     return students.filter((student) => {
       // Check if student has ANY payment matching the selected tab status
-      return student.feePayments.some((payment) => {
+      return (student.feePayments || []).some((payment) => {
         const actualStatus = calculateActualStatus(payment);
         return actualStatus === selectedTab;
       });
@@ -318,7 +318,7 @@ function FeesPageContent() {
       return student.feePayments;
     }
 
-    return student.feePayments.filter((payment) => {
+    return (student.feePayments || []).filter((payment) => {
       const actualStatus = calculateActualStatus(payment);
       return actualStatus === selectedTab;
     });
@@ -580,13 +580,13 @@ function FeesPageContent() {
                         <div className="flex justify-between items-center">
                           <span className="text-xs sm:text-sm text-slate-500">Collection</span>
                           <span className="text-sm sm:text-base font-bold text-slate-800">
-                            {Math.round((classData.collectedFees / classData.totalFees) * 100)}%
+                            {classData.totalFees > 0 ? Math.round((classData.collectedFees / classData.totalFees) * 100) : 0}%
                           </span>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-1.5 sm:h-2 mt-1 sm:mt-2">
                           <div
                             className="bg-gradient-to-r from-blue-500 to-blue-600 h-1.5 sm:h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.round((classData.collectedFees / classData.totalFees) * 100)}%` }}
+                            style={{ width: `${classData.totalFees > 0 ? Math.round((classData.collectedFees / classData.totalFees) * 100) : 0}%` }}
                           ></div>
                         </div>
                       </div>

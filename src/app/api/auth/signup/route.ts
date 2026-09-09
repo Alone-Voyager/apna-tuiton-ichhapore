@@ -5,7 +5,9 @@ import { generateSlug } from '../../../../lib/utils/slug';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, fullName, organizationName, state, city, phone, role = 'admin' } = body;
+    const { email, password, fullName, organizationName, state, city, phone } = body;
+    // SECURITY: Never trust role from client - always assign 'admin' for signup
+    const role = 'admin';
 
     // Validate required fields
     if (!email || !password || !fullName || !organizationName || !state || !city || !phone) {
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
       .from('organizations')
       .select('name')
       .eq('name', organizationName)
-      .single();
+      .maybeSingle();
 
     if (existingOrg) {
       return NextResponse.json(
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create admin profile
+    // Create admin profile - role is always 'admin' (never from client input)
     const { error: profileError } = await supabaseAdmin
       .from('admin_profiles')
       .insert({

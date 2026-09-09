@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { supabaseAdmin } from '../../../../lib/supabase/client';
 
 // GET /api/attendance/daily - Fetch students with attendance for a specific date
 export async function GET(request: NextRequest) {
@@ -279,16 +280,16 @@ export async function POST(request: NextRequest) {
 
     // Prepare attendance records for upsert
     const attendanceRecords = records.map(record => ({
-      organization_id: userData.organization_id,
+      organization_id: userData?.organization_id || null,
       student_id: record.student_id,
       attendance_date: date,
       status: record.status, // Already capitalized from frontend
       check_in_time: record.check_in_time || null,
-      marked_by: userData.id,
+      marked_by: userData?.id || null,
     }));
 
-    // Upsert attendance records (update if exists, insert if not)
-    const { data: savedRecords, error: upsertError } = await supabase
+    // Upsert attendance records using admin client to bypass RLS
+    const { data: savedRecords, error: upsertError } = await supabaseAdmin
       .from('attendance')
       .upsert(attendanceRecords, {
         onConflict: 'student_id,attendance_date',

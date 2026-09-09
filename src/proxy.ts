@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-
-const DEFAULT_SUPABASE_URL = 'https://cgbwcayquqpgbnyxnyzw.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './lib/supabase/config';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -12,56 +10,29 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = DEFAULT_SUPABASE_URL;
-  const supabaseAnonKey = DEFAULT_ANON_KEY;
-
   const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
+          request.cookies.set({ name, value: '', ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value: '', ...options });
         },
       },
     }
   );
 
-  // Use getUser() instead of getSession() for secure server-side auth check
+  // Secure server-side auth check
   const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
@@ -75,20 +46,18 @@ export async function proxy(request: NextRequest) {
 
   // If signed in and on login/signup -> redirect to appropriate dashboard
   if (user && (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/login/'))) {
-    // Check if they're a student
     try {
       const { data: studentProfile } = await supabase
         .from('student_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (studentProfile) {
         return NextResponse.redirect(new URL('/student/dashboard', request.url));
       }
-    } catch (e) {
-      // Ignore errors — just redirect to admin dashboard
+    } catch {
+      // Ignore errors — fall through to admin dashboard
     }
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
@@ -100,13 +69,12 @@ export async function proxy(request: NextRequest) {
         .from('student_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (studentProfile) {
         return NextResponse.redirect(new URL('/student/dashboard', request.url));
       }
-    } catch (e) {
+    } catch {
       // Ignore — allow access
     }
   }
@@ -124,7 +92,7 @@ export async function proxy(request: NextRequest) {
       if (adminProfile) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-    } catch (e) {
+    } catch {
       // Ignore — allow access
     }
   }
@@ -132,7 +100,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Configure which routes use this proxy.
+// Configure which routes use this middleware.
 export const config = {
   matcher: [
     /*

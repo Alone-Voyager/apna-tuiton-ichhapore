@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     const { data: notification, error } = await supabase
       .from('notifications')
       .insert({
-        organization_id: userData.organization_id,
+        organization_id: userData?.organization_id || null,
         type,
         title,
         message,

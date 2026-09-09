@@ -75,6 +75,10 @@ function StudentDetailsContent() {
     const id = searchParams.get('id')
     if (id) {
       setStudentId(id)
+    } else {
+      // No student ID in URL - stop loading immediately
+      setLoading(false)
+      setError('Student ID is required. Please go back and select a student.')
     }
   }, [searchParams])
 

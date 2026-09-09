@@ -220,83 +220,8 @@ export default function NotificationsPage() {
       setNotifications(data.notifications || []);
     } catch (err) {
       console.error('Error fetching notifications:', err);
-      // Mock notification history for testing
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'fee_reminder',
-          title: 'Monthly Fee Reminder',
-          message: 'Your monthly fee of ₹5000 is due on Nov 10, 2025. Please pay to avoid late charges.',
-          target_type: 'class',
-          target_id: 'class-10a',
-          status: 'sent',
-          scheduled_at: null,
-          sent_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          recipient_count: 45,
-          delivered_count: 43,
-          failed_count: 2
-        },
-        {
-          id: '2',
-          type: 'admission',
-          title: 'Welcome New Student',
-          message: 'Welcome to our tuition! Classes start on Nov 15. Contact us for any queries.',
-          target_type: 'student',
-          target_id: 'student-123',
-          status: 'sent',
-          scheduled_at: null,
-          sent_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-          created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          recipient_count: 1,
-          delivered_count: 1,
-          failed_count: 0
-        },
-        {
-          id: '3',
-          type: 'attendance',
-          title: 'Low Attendance Alert',
-          message: 'Your child has 68% attendance this month. Please ensure regular attendance.',
-          target_type: 'all',
-          status: 'sent',
-          scheduled_at: null,
-          sent_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          recipient_count: 12,
-          delivered_count: 10,
-          failed_count: 2
-        },
-        {
-          id: '4',
-          type: 'announcement',
-          title: 'Exam Schedule',
-          message: 'Mid-term exams will be held from Nov 20-25. Syllabus has been shared.',
-          target_type: 'all',
-          status: 'scheduled',
-          scheduled_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-          sent_at: null,
-          created_at: new Date().toISOString(),
-          recipient_count: 150,
-          delivered_count: 0,
-          failed_count: 0
-        },
-        {
-          id: '5',
-          type: 'fee_reminder',
-          title: 'Fee Overdue Notice',
-          message: 'Your fee payment is overdue by 5 days. Please pay immediately.',
-          target_type: 'class',
-          target_id: 'class-9b',
-          status: 'failed',
-          scheduled_at: null,
-          sent_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
-          recipient_count: 8,
-          delivered_count: 0,
-          failed_count: 8
-        }
-      ];
-      setNotifications(mockNotifications);
+      setNotifications([]);
+      setError('Failed to load notifications. Please refresh the page.');
     }
   };
 
@@ -511,35 +436,7 @@ export default function NotificationsPage() {
       }
     } catch (err: any) {
       console.error('Error creating notification:', err);
-      // Create notification in local state (mock - API not implemented)
-      const newNotification: Notification = {
-        id: `notif-${Date.now()}`,
-        type: formData.type,
-        title: formData.title,
-        message: formData.message,
-        target_type: formData.target_type,
-        target_id: formData.target_id || undefined,
-        status: formData.scheduled_at ? 'scheduled' : 'sent',
-        scheduled_at: formData.scheduled_at || null,
-        sent_at: formData.scheduled_at ? null : new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        recipient_count: formData.target_type === 'all' ? 150 : formData.target_type === 'class' ? 45 : 1,
-        delivered_count: formData.scheduled_at ? 0 : (formData.target_type === 'all' ? 145 : formData.target_type === 'class' ? 43 : 1),
-        failed_count: formData.scheduled_at ? 0 : (formData.target_type === 'all' ? 5 : formData.target_type === 'class' ? 2 : 0)
-      };
-      setNotifications([newNotification, ...notifications]);
-      
-      setShowCreateModal(false);
-      setFormData({
-        use_template: false,
-        template_id: '',
-        type: 'announcement',
-        title: '',
-        message: '',
-        target_type: 'all',
-        target_id: '',
-        scheduled_at: ''
-      });
+      setError('Failed to create notification: ' + (err.message || 'Network error'));
     }
   };
 

@@ -401,7 +401,7 @@ export default function Settings() {
                       <td className="py-3 px-4 text-slate-600 text-sm">{profile.email}</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full capitalize">
-                          {profile.role.replace('_', ' ')}
+                          {(profile.role || 'staff').replace('_', ' ')}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-slate-600 text-sm">{profile.phone || 'N/A'}</td>

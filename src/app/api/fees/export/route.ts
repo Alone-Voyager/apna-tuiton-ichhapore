@@ -39,10 +39,10 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (userError || !userData) {
-      // bypassed organization check
+      // Bypassed organization check — proceed with null guard
     }
 
-    const organizationId = userData.organization_id;
+    const organizationId = userData?.organization_id || null;
 
     let query = supabase
       .from('fee_payments')

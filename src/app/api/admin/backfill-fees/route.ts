@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/config';
 import { getCompletedBillingMonths } from '../../../../lib/fees-service';
 
 /**
  * POST /api/admin/backfill-fees
  * 
- * One-time backfill: clears ALL unpaid fee_payments records for the org
+ * One-time backfill: removes ONLY unpaid fee_payments records for the org
  * and regenerates them correctly using the fixed calendar-cycle billing logic.
- * Paid records in fee_payment_history are fully preserved.
+ * PAID records are ALWAYS preserved - never deleted.
  */
 export async function POST(request: NextRequest) {
   try {
     const response = NextResponse.json({ success: true });
     const supabase = createServerClient(
-      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg',
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
       {
         cookies: {
           get(name: string) { return request.cookies.get(name)?.value; },
@@ -30,13 +31,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: userData } = await supabase
+    // SECURITY: Verify the caller is an admin
+    const { data: userData } = await supabaseAdmin
       .from('admin_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    // Organization check bypassed for single org
+    if (!userData || !['admin', 'super_admin'].includes(userData.role)) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
     const organizationId = userData?.organization_id || 'default-org';
     const today = new Date();
 
@@ -44,34 +49,48 @@ export async function POST(request: NextRequest) {
     const { data: students, error: studentsError } = await supabaseAdmin
       .from('students')
       .select('id, name, admission_date, monthly_fee')
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .eq('is_active', true);
 
     if (studentsError || !students) {
       return NextResponse.json({ error: 'Failed to fetch students' }, { status: 500 });
     }
 
-    // 2. Fetch all paid months from fee_payment_history (these are PRESERVED)
-    const { data: paidHistory } = await supabaseAdmin
-      .from('fee_payment_history')
-      .select('student_id, payment_month')
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
+    // 2. Fetch paid months from fee_payment_history (if table exists)
+    let paidByStudent = new Map<string, Set<string>>();
 
-    const paidByStudent = new Map<string, Set<string>>();
-    for (const h of paidHistory || []) {
-      if (!paidByStudent.has(h.student_id)) paidByStudent.set(h.student_id, new Set());
-      paidByStudent.get(h.student_id)!.add(h.payment_month.toLowerCase());
+    try {
+      const { data: paidHistory } = await supabaseAdmin
+        .from('fee_payment_history')
+        .select('student_id, payment_month');
+
+      for (const h of paidHistory || []) {
+        if (!paidByStudent.has(h.student_id)) paidByStudent.set(h.student_id, new Set());
+        paidByStudent.get(h.student_id)!.add(h.payment_month.toLowerCase());
+      }
+    } catch {
+      console.warn('[backfill-fees] fee_payment_history table not available, using fee_payments as source of truth');
     }
 
-    // 3. Delete ALL existing fee_payments records for this org (unpaid/pending/overdue — everything except what's in history)
+    // 2b. Also check paid status directly from fee_payments table (more reliable)
+    const { data: alreadyPaid } = await supabaseAdmin
+      .from('fee_payments')
+      .select('student_id, payment_month')
+      .eq('status', 'Paid');
+
+    for (const p of alreadyPaid || []) {
+      if (!paidByStudent.has(p.student_id)) paidByStudent.set(p.student_id, new Set());
+      paidByStudent.get(p.student_id)!.add(p.payment_month.toLowerCase());
+    }
+
+    // 3. SAFE DELETE: Delete ONLY Unpaid/Overdue/Pending records — NEVER delete Paid records
     const { error: deleteAllError } = await supabaseAdmin
       .from('fee_payments')
       .delete()
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId);
+      .in('status', ['Unpaid', 'Overdue', 'Pending']);
 
     if (deleteAllError) {
-      console.error('Error deleting existing fee payments:', deleteAllError);
-      return NextResponse.json({ error: 'Failed to clear old fee records' }, { status: 500 });
+      console.error('Error deleting unpaid fee payments:', deleteAllError);
+      return NextResponse.json({ error: 'Failed to clear old unpaid fee records' }, { status: 500 });
     }
 
     // 4. Regenerate fee records using the correct billing-cycle logic
@@ -84,7 +103,6 @@ export async function POST(request: NextRequest) {
       const monthlyFee = Number(student.monthly_fee) || 0;
       const studentPaidMonths = paidByStudent.get(student.id) || new Set<string>();
 
-      // Get all correctly-named due months
       const completedMonths = getCompletedBillingMonths(student.admission_date, today);
       let generated = 0;
       let skipped = 0;
@@ -92,7 +110,7 @@ export async function POST(request: NextRequest) {
       for (const billing of completedMonths) {
         const monthLower = billing.monthName.toLowerCase();
 
-        // Skip if already paid in history (preserved)
+        // Skip months that are already recorded as paid
         if (studentPaidMonths.has(monthLower)) {
           skipped++;
           continue;
