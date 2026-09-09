@@ -1,9 +1,5 @@
 import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const CONFIG_FILE = path.join(DATA_DIR, 'google-sheets.json');
+import { supabaseAdmin } from './supabase/client';
 
 export interface GoogleSheetsConfig {
   clientEmail: string;
@@ -14,27 +10,61 @@ export interface GoogleSheetsConfig {
   isActive: boolean;
 }
 
-export function getGoogleSheetsConfig(): GoogleSheetsConfig | null {
+export async function getGoogleSheetsConfig(): Promise<GoogleSheetsConfig | null> {
   try {
-    if (!fs.existsSync(CONFIG_FILE)) {
+    const { data: integration, error } = await supabaseAdmin
+      .from('integration_settings')
+      .select('config, api_key, webhook_secret, is_active')
+      .eq('integration_type', 'google_sheets')
+      .single();
+
+    if (error || !integration) {
       return null;
     }
-    const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    return JSON.parse(data);
+
+    return {
+      clientEmail: integration.api_key || '',
+      privateKey: integration.webhook_secret || '',
+      spreadsheetId: integration.config?.spreadsheetId || '',
+      studentSheetName: integration.config?.studentSheetName || 'Students',
+      feeSheetName: integration.config?.feeSheetName || 'Fee Payments',
+      isActive: integration.is_active ?? true,
+    };
   } catch (error) {
-    console.error('Error reading Google Sheets config:', error);
+    console.error('Error reading Google Sheets config from DB:', error);
     return null;
   }
 }
 
-export function saveGoogleSheetsConfig(config: GoogleSheetsConfig): void {
+export async function saveGoogleSheetsConfig(config: GoogleSheetsConfig, organizationId: string = 'default-org'): Promise<void> {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const { data: existing } = await supabaseAdmin
+      .from('integration_settings')
+      .select('id')
+      .eq('integration_type', 'google_sheets')
+      .maybeSingle();
+
+    const payload = {
+      organization_id: organizationId,
+      integration_type: 'google_sheets',
+      api_key: config.clientEmail,
+      webhook_secret: config.privateKey,
+      is_active: config.isActive,
+      config: {
+        spreadsheetId: config.spreadsheetId,
+        studentSheetName: config.studentSheetName,
+        feeSheetName: config.feeSheetName,
+      },
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing) {
+      await supabaseAdmin.from('integration_settings').update(payload).eq('id', existing.id);
+    } else {
+      await supabaseAdmin.from('integration_settings').insert(payload);
     }
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   } catch (error) {
-    console.error('Error saving Google Sheets config:', error);
+    console.error('Error saving Google Sheets config to DB:', error);
     throw new Error('Failed to save config');
   }
 }
@@ -49,7 +79,7 @@ async function getGoogleAuth(config: GoogleSheetsConfig) {
 }
 
 export async function syncStudentToSheet(student: any) {
-  const config = getGoogleSheetsConfig();
+  const config = await getGoogleSheetsConfig();
   if (!config || !config.isActive || !config.spreadsheetId) return;
 
   try {
@@ -85,7 +115,7 @@ export async function syncStudentToSheet(student: any) {
 }
 
 export async function syncFeeToSheet(fee: any, student: any) {
-  const config = getGoogleSheetsConfig();
+  const config = await getGoogleSheetsConfig();
   if (!config || !config.isActive || !config.spreadsheetId) return;
 
   try {

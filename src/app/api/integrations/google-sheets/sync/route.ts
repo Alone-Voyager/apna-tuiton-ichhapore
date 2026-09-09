@@ -5,7 +5,7 @@ import { google } from 'googleapis';
 
 export async function POST(request: NextRequest) {
   try {
-    const config = getGoogleSheetsConfig();
+    const config = await getGoogleSheetsConfig();
     
     if (!config || !config.spreadsheetId) {
       return NextResponse.json(
