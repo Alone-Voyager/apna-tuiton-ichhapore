@@ -107,7 +107,10 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     const existingPayments = existingPaymentsRes.data || [];
     const existingHistory = existingHistoryRes.data || [];
 
-    const paidMonthsNames = new Set(existingHistory.map((h: any) => h.payment_month.toLowerCase()));
+    const paidMonthsNames = new Set([
+      ...existingHistory.map((h: any) => h.payment_month?.toLowerCase()).filter(Boolean),
+      ...existingPayments.filter((p: any) => p.status === 'Paid').map((p: any) => p.payment_month?.toLowerCase()).filter(Boolean)
+    ]);
     const unpaidMonthsMap = new Map<string, any>(existingPayments.map((p: any) => [p.payment_month.toLowerCase(), p]));
 
     // 4. For each completed billing month, sync its record
@@ -223,11 +226,11 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       .from('fee_payment_history')
       .select('student_id, payment_month');
     if (organizationId) paidQuery = paidQuery.eq('organization_id', organizationId);
-    const { data: allPaid, error: paidError } = await paidQuery;
+    const { data: allPaidData, error: paidError } = await paidQuery;
 
+    const allPaid = allPaidData || [];
     if (paidError) {
-      console.error('Error fetching paid history for sync:', paidError);
-      return;
+      console.warn('fee_payment_history query warning (using fee_payments status=Paid fallback):', paidError.message);
     }
 
     // 4. Group by student_id

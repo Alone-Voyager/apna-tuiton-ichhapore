@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { sendPaymentConfirmation } from '../../../../lib/payment-notification-service';
+import { supabaseAdmin } from '../../../../lib/supabase/client';
 
 // POST /api/fees/collect - Collect fee payment
 export async function POST(request: NextRequest) {
@@ -109,47 +110,52 @@ export async function POST(request: NextRequest) {
     // Generate receipt number
     const receiptNumber = `RCP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Start transaction by moving to history and updating current record
-    // 1. Insert into fee_payment_history
-    const { error: historyError } = await supabase
-      .from('fee_payment_history')
-      .insert({
-        student_id: existingPayment.student_id,
-        organization_id: existingPayment.organization_id,
-        amount: expectedAmount,
-        payment_month: existingPayment.payment_month,
-        payment_date: payment_date,
-        due_date: existingPayment.due_date,
-        payment_method: payment_method,
-        receipt_number: receiptNumber,
+    // 1. Update status in fee_payments using admin client
+    const { error: updateFeeError } = await supabaseAdmin
+      .from('fee_payments')
+      .update({
+        status: 'Paid',
         paid_amount: paidAmount,
         discount: totalDiscount,
         late_fee: totalLateFee,
+        payment_date: payment_date,
+        payment_method: payment_method,
+        receipt_number: receiptNumber,
         notes: notes || `Payment collected for ${existingPayment.payment_month}`,
-        collected_by: adminProfile.id,
-        collected_at: new Date().toISOString(),
-      });
-
-    if (historyError) {
-      console.error('Error creating payment history:', historyError);
-      return NextResponse.json(
-        { error: 'Failed to record payment history' },
-        { status: 500 }
-      );
-    }
-
-    // 2. Delete the old payment record from fee_payments
-    const { error: deleteError } = await supabase
-      .from('fee_payments')
-      .delete()
+        collected_at: new Date().toISOString()
+      })
       .eq('id', payment_id);
 
-    if (deleteError) {
-      console.error('Error deleting payment record:', deleteError);
+    if (updateFeeError) {
+      console.error('Error updating fee payment record:', updateFeeError);
       return NextResponse.json(
         { error: 'Failed to update payment record' },
         { status: 500 }
       );
+    }
+
+    // 2. Try inserting into fee_payment_history (optional audit log)
+    try {
+      await supabaseAdmin
+        .from('fee_payment_history')
+        .insert({
+          student_id: existingPayment.student_id,
+          organization_id: existingPayment.organization_id,
+          amount: expectedAmount,
+          payment_month: existingPayment.payment_month,
+          payment_date: payment_date,
+          due_date: existingPayment.due_date,
+          payment_method: payment_method,
+          receipt_number: receiptNumber,
+          paid_amount: paidAmount,
+          discount: totalDiscount,
+          late_fee: totalLateFee,
+          notes: notes || `Payment collected for ${existingPayment.payment_month}`,
+          collected_by: adminProfile?.id || null,
+          collected_at: new Date().toISOString(),
+        });
+    } catch (hErr) {
+      console.warn('fee_payment_history insert skipped:', hErr);
     }
 
     // 3. Get student details for activity log

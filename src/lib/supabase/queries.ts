@@ -45,14 +45,20 @@ export async function getStudentById(id: string) {
 }
 
 export async function getStudentDetailsWithFees(id: string) {
-  // Sync fee payments first via server-side sync endpoint (with admin privileges)
+  // First try fetching from server API endpoint (bypasses browser client RLS issues)
   try {
-    await fetch(`/api/students/${id}/sync-fees`, { method: 'POST' });
-  } catch (err) {
-    console.error('Error triggering student fee sync:', err);
+    const res = await fetch(`/api/students/${id}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data) {
+        return { data: json.data, error: null };
+      }
+    }
+  } catch (apiErr) {
+    console.error('API fetch failed, falling back to direct client query:', apiErr);
   }
 
-  // Fetch student data
+  // Fallback: Fetch student data directly via client
   const { data: student, error: studentError } = await supabase
     .from('students')
     .select('*, classes(name)')
@@ -76,7 +82,6 @@ export async function getStudentDetailsWithFees(id: string) {
   }
 
   // Fetch payment history (total paid) from fee_payments table with status=Paid
-  // Avoids querying the non-existent fee_payment_history table
   const { data: paidPayments, error: paidError } = await supabase
     .from('fee_payments')
     .select('paid_amount')

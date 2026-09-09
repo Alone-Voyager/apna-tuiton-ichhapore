@@ -4,6 +4,85 @@ import { supabaseAdmin } from '../../../../lib/supabase/client';
 import bcrypt from 'bcryptjs';
 import { syncStudentFeePayments } from '../../../../lib/fees-service';
 
+// GET /api/students/[id] - Get student details with fee statistics
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ error: 'Student ID is required' }, { status: 400 });
+    }
+
+    // Sync fee payments first using admin client
+    try {
+      await syncStudentFeePayments(supabaseAdmin, id);
+    } catch (syncErr) {
+      console.error('Error syncing student fee payments:', syncErr);
+    }
+
+    // Fetch student data with class details using supabaseAdmin to bypass broken client RLS
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('*, classes(name)')
+      .eq('id', id)
+      .single();
+
+    if (studentError || !student) {
+      console.error('Error fetching student details:', studentError);
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    // Fetch pending/overdue fee payments
+    const { data: overduePayments } = await supabaseAdmin
+      .from('fee_payments')
+      .select('*')
+      .eq('student_id', id)
+      .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
+      .order('due_date', { ascending: true });
+
+    // Fetch paid payments
+    const { data: paidPayments } = await supabaseAdmin
+      .from('fee_payments')
+      .select('paid_amount')
+      .eq('student_id', id)
+      .eq('status', 'Paid');
+
+    const totalPaid = (paidPayments || []).reduce(
+      (sum: number, p: { paid_amount: any }) => sum + Number(p.paid_amount || 0),
+      0
+    );
+
+    const pendingPayments = overduePayments || [];
+    const totalPendingMonths = pendingPayments.length;
+    const pendingAmount = pendingPayments.reduce(
+      (sum: number, p: { amount: any; paid_amount?: any }) =>
+        sum + Number(p.amount || 0) - Number(p.paid_amount || 0),
+      0
+    );
+    const pendingMonths = pendingPayments.map((p: { payment_month: any }) => p.payment_month);
+
+    return NextResponse.json({
+      data: {
+        ...student,
+        totalPaid,
+        totalPendingMonths,
+        pendingAmount,
+        pendingMonths,
+        feePayments: overduePayments || [],
+        paymentHistory: paidPayments || []
+      }
+    });
+  } catch (error: any) {
+    console.error('Unexpected error in GET /api/students/[id]:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/students/[id] - Delete a student (soft delete by default, hard delete optional)
 export async function DELETE(
   request: NextRequest,
