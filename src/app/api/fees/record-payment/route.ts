@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
       .from('fee_payments')
       .select('id, payment_month, amount, due_date, status')
       .eq('student_id', studentId)
-      .in('status', ['Unpaid', 'Overdue'])
+      .in('status', ['Pending', 'Overdue'])
       .order('due_date', { ascending: true });
 
     if (error) {

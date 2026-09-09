@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
     // Fetch unpaid payments
     const { data: unpaidPayments } = await supabaseAdmin
       .from('fee_payments')
-      .select('payment_month, amount, paid_amount')
+      .select('payment_month, amount, paid_amount, status')
       // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
+      .in('status', ['Pending', 'Unpaid', 'Overdue'])
       .catch(() => ({ data: null }));
 
     // Fetch paid histories

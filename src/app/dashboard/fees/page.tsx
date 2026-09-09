@@ -293,7 +293,7 @@ function FeesPageContent() {
 
   // Calculate the actual status based on current/test date
   const calculateActualStatus = (payment: FeePayment): string => {
-    if (!payment) return 'unpaid';
+    if (!payment) return 'pending';
 
     // Use the status from backend directly (backend already handles overdue logic)
     // Backend updates status based on the testDate parameter
@@ -769,7 +769,7 @@ function FeesPageContent() {
                           return paginatedCards.map(({ student, payment }) => {
                             const actualStatus = calculateActualStatus(payment);
                             const isPaid = actualStatus === 'paid';
-                            const isUnpaid = actualStatus === 'unpaid';
+                            const isUnpaid = actualStatus === 'pending' || actualStatus === 'unpaid';
                             const isOverdue = actualStatus === 'overdue';
 
                             return (

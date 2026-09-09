@@ -140,12 +140,11 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
       const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
       entriesToInsert.push({
         student_id: studentId,
-        organization_id: organizationId,
         amount: monthlyFee,
         payment_month: billingMonth.monthName,
         payment_date: student.admission_date,
         due_date: billingMonth.dueDate,
-        status: 'Unpaid',
+        status: 'Pending',
         paid_amount: 0.00,
         discount: 0.00,
         late_fee: 0.00,
@@ -297,12 +296,11 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
         const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         entriesToInsert.push({
           student_id: studentId,
-          organization_id: organizationId,
           amount: monthlyFee,
           payment_month: billingMonth.monthName,
           payment_date: student.admission_date,
           due_date: billingMonth.dueDate,
-          status: 'Unpaid',
+          status: 'Pending',
           paid_amount: 0.00,
           discount: 0.00,
           late_fee: 0.00,

@@ -1,30 +1,22 @@
-function addMonths(date, months) {
-  const d = new Date(date);
-  const originalDay = date.getDate();
-  d.setMonth(d.getMonth() + months);
-  if (d.getDate() !== originalDay) {
-    d.setDate(0);
+const https = require('https');
+const options = {
+  hostname: 'cgbwcayquqpgbnyxnyzw.supabase.co',
+  path: '/rest/v1/',
+  method: 'GET',
+  headers: {
+    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA1OTM1OCwiZXhwIjoyMDc3NjM1MzU4fQ.GI0n5RGF540FQvGm9N9P5wfQrLnOycM_hKZ2dQeDAEI'
   }
-  return d;
-}
-function getCompletedBillingMonths(admissionDateStr, currentDate = new Date()) {
-  const admissionDate = new Date(admissionDateStr);
-  admissionDate.setHours(0, 0, 0, 0);
-  const today = new Date(currentDate);
-  today.setHours(0, 0, 0, 0);
-  const completedMonths = [];
-  let i = 1;
-  while (true) {
-    const completionDate = addMonths(admissionDate, i);
-    completionDate.setHours(0, 0, 0, 0);
-    if (completionDate > today) break;
-    const dueMonthDate = addMonths(admissionDate, i - 1);
-    const monthName = dueMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    const dueDateStr = completionDate.toISOString().split('T')[0];
-    completedMonths.push({ monthName, dueDate: dueDateStr });
-    i++;
-    if (i > 1200) break;
-  }
-  return completedMonths;
-}
-console.log(getCompletedBillingMonths('2026-04-15', new Date('2026-09-09')));
+};
+const req = https.request(options, res => {
+  let data = '';
+  res.on('data', chunk => data += chunk);
+  res.on('end', () => {
+    try {
+      const swagger = JSON.parse(data);
+      console.log('fee_payments properties:', swagger.definitions.fee_payments.properties.status);
+    } catch(e) {
+      console.log('Parse error:', e);
+    }
+  });
+});
+req.end();

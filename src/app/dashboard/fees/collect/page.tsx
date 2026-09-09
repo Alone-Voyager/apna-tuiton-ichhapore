@@ -165,7 +165,7 @@ export default function CollectFeesPage() {
   const totalDue = filteredStudents.reduce((sum, s) =>
     sum + s.fee_payments.reduce((fSum, p) => fSum + (p.amount || 0), 0), 0);
   const overdueStudents = filteredStudents.filter(s => s.fee_payments.some(p => p.status === 'Overdue'));
-  const pendingStudents = filteredStudents.filter(s => s.fee_payments.some(p => p.status === 'Unpaid'));
+  const pendingStudents = filteredStudents.filter(s => s.fee_payments.some(p => p.status === 'Pending'));
 
   return (
     <div className="min-h-full bg-slate-50">

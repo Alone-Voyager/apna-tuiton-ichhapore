@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       .from('fee_payments')
       .select('id, payment_month')
       // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
-      .eq('status', 'Unpaid');
+      .in('status', ['Pending', 'Unpaid']); // Support both in case old records exist
     
     if (unpaidFetchError) {
       console.error('Error fetching unpaid entries:', unpaidFetchError);
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
     const validPaidHistory = paidHistory?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
 
     const totalStudents = filteredStudents?.length || 0;
-    const unpaidCount = validFeePayments.filter((fp: any) => fp.status === 'Unpaid' && fp.payment_month === filterMonth).length;
+    const unpaidCount = validFeePayments.filter((fp: any) => (fp.status === 'Pending' || fp.status === 'Unpaid') && fp.payment_month === filterMonth).length;
     const paidCount = validPaidHistory.length;
     const overdueCount = validFeePayments.filter((fp: any) => fp.status === 'Overdue').length;
     const partialCount = validFeePayments.filter((fp: any) => fp.status === 'Partial').length;
