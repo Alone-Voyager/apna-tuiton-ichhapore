@@ -5,7 +5,11 @@ const supabaseAdmin = createClient(
 );
 
 async function run() {
-  const { data: fees } = await supabaseAdmin.from('fee_payments').select('*, students(name)');
-  console.log('All Fees:', fees);
+  const tables = ['students', 'fee_payments', 'fee_payment_history'];
+  for (const table of tables) {
+    const { data, error } = await supabaseAdmin.from(table).select('organization_id').limit(1);
+    if (error) console.error(`Error on ${table}:`, error.message);
+    else console.log(`${table} has organization_id`);
+  }
 }
 run();

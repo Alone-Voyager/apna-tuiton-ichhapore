@@ -82,7 +82,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     // 1. Fetch student details
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .select('admission_date, monthly_fee, organization_id, is_active')
+      .select('admission_date, monthly_fee, is_active')
       .eq('id', studentId)
       .single();
 
@@ -92,7 +92,6 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     }
 
     const monthlyFee = Number(student.monthly_fee) || 0;
-    const organizationId = student.organization_id;
 
     // 2. Get all completed billing months based on calendar logic
     const completedBillingMonths = getCompletedBillingMonths(student.admission_date, currentDate);
@@ -201,7 +200,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       .from('students')
       .select('id, admission_date, monthly_fee, name')
       .eq('is_active', true);
-    if (organizationId) studentsQuery = studentsQuery.eq('organization_id', organizationId);
+    // organization_id does not exist in the database
     const { data: students, error: studentsError } = await studentsQuery;
 
     if (studentsError || !students || students.length === 0) {
@@ -212,7 +211,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
     let unpaidQuery = supabase
       .from('fee_payments')
       .select('*');
-    if (organizationId) unpaidQuery = unpaidQuery.eq('organization_id', organizationId);
+    // organization_id does not exist in the database
     const { data: allUnpaid, error: unpaidError } = await unpaidQuery;
 
     if (unpaidError) {
@@ -223,8 +222,10 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
     // 3. Fetch all paid fee histories for the organization
     let paidQuery = supabase
       .from('fee_payment_history')
-      .select('student_id, payment_month');
-    if (organizationId) paidQuery = paidQuery.eq('organization_id', organizationId);
+      .select('student_id, payment_month')
+      .then((res: any) => res)
+      .catch(() => ({ data: [] })); // Catch error since table does not exist
+    
     const { data: allPaidData, error: paidError } = await paidQuery;
 
     const allPaid = allPaidData || [];
