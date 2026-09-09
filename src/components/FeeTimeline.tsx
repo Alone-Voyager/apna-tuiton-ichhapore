@@ -9,7 +9,7 @@ import { addMonths } from '../lib/fees-service'
 interface FeeRecord {
   month: string
   year: number
-  status: 'pending' | 'paid' | 'upcoming' | 'left'
+  status: 'pending' | 'paid' | 'upcoming' | 'left' | 'running'
   amount?: number
   paymentDate?: string
 }
@@ -126,7 +126,7 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           const monthDisplayKey = `${getMonthName(dueMonth)} ${dueYear}`
           const monthLookupKey = monthDisplayKey.toLowerCase()
 
-          let status: 'pending' | 'paid' | 'upcoming' = 'upcoming'
+          let status: 'pending' | 'paid' | 'upcoming' | 'running' = 'upcoming'
 
           // Priority 1: Check payment history first (paid)
           if (paidMonths.has(monthLookupKey)) {
@@ -140,7 +140,11 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
           else if (currentDate >= completionDate) {
             status = 'pending'
           }
-          // Priority 4: Billing cycle not yet complete → upcoming
+          // Priority 4: The billing cycle is currently active → running
+          else if (currentDate >= dueMonthDate && currentDate < completionDate) {
+            status = 'running'
+          }
+          // Priority 5: Billing cycle not yet started → upcoming
           else {
             status = 'upcoming'
           }
@@ -210,6 +214,8 @@ export function FeeTimeline({ studentId, admissionDate, monthlyFee, studentStatu
         return 'bg-green-500'
       case 'pending':
         return 'bg-red-500'
+      case 'running':
+        return 'bg-yellow-500'
       case 'upcoming':
         return 'bg-gray-300'
       case 'left':
