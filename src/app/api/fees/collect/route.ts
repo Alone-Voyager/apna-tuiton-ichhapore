@@ -217,6 +217,21 @@ export async function POST(request: NextRequest) {
       console.error('Payment confirmation notification failed:', error);
     });
 
+    // Sync to Google Sheets
+    import('../../../../lib/google-sheets').then((sheets) => {
+      const feeData = {
+        id: payment_id,
+        payment_month: existingPayment.payment_month,
+        paid_amount: paidAmount,
+        payment_method: payment_method,
+        payment_date: payment_date,
+        receipt_number: receiptNumber,
+        status: 'Paid',
+        notes: notes || `Payment collected for ${existingPayment.payment_month}`
+      };
+      sheets.syncFeeToSheet(feeData, studentData).catch(err => console.error('Sheet sync error', err));
+    }).catch(err => console.error('Failed to load sheets lib', err));
+
     return NextResponse.json(
       { 
         success: true,

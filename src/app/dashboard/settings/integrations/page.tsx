@@ -230,6 +230,25 @@ export default function IntegrationsPage() {
               </Alert>
             )}
 
+            {/* Google Sheets Integration Card */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-6 cursor-pointer hover:border-emerald-300 transition-colors" onClick={() => router.push('/dashboard/settings/integrations/google-sheets')}>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18V3H3zm16 16H5V5h14v14z"/><path d="M7 7h10v2H7zM7 11h10v2H7zM7 15h10v2H7z"/></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">Google Sheets</h2>
+                    <p className="text-slate-600 text-sm">Automatically sync student admissions and fee collections to a Google Sheet.</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-4 sm:mt-0 text-emerald-600 font-medium bg-emerald-100 px-3 py-1.5 rounded-full">
+                    Configure
+                    <ArrowLeft className="w-4 h-4 rotate-180" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* WhatsApp Integration Card */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
               {/* Header */}

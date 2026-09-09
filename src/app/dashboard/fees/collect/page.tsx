@@ -95,7 +95,7 @@ export default function CollectFeesPage() {
           fee_payments: s.fee_payments || [],
         }));
         setStudents(studentList);
-        const uniqueClasses: string[] = ['all', ...Array.from(new Set(studentList.map((s: any) => s.class_name).filter(Boolean)))];
+        const uniqueClasses: string[] = ['all', ...Array.from(new Set<string>(studentList.map((s: any) => String(s.class_name)).filter(Boolean)))];
         setClasses(uniqueClasses);
       } catch {
         setError(err.message || 'Failed to load pending fees data');

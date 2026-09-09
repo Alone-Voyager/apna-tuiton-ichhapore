@@ -407,6 +407,11 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if notification fails
     });
 
+    // Sync to Google Sheets
+    import('../../../lib/google-sheets').then((sheets) => {
+      sheets.syncStudentToSheet(newStudent).catch((err: any) => console.error('Sheet sync error', err));
+    }).catch((err: any) => console.error('Failed to load sheets lib', err));
+
     return NextResponse.json(
       { student: newStudent, message: 'Student admitted successfully' },
       { status: 201 }
