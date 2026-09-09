@@ -38,8 +38,6 @@ export async function POST(request: NextRequest) {
 
     if (feesError) throw feesError;
 
-    // 3. Clear and Update Students Sheet
-    const studentHeaders = ['ID', 'Name', 'Roll Number', 'Class ID', 'Phone', 'WhatsApp', 'Parent Name', 'Monthly Fee', 'Admission Date', 'Status'];
     const studentRows = (students || []).map((s: any) => [
       s.id,
       s.name,
@@ -53,20 +51,6 @@ export async function POST(request: NextRequest) {
       s.status || 'active'
     ]);
 
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: config.spreadsheetId,
-      range: `${config.studentSheetName}!A:J`,
-    });
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: config.spreadsheetId,
-      range: `${config.studentSheetName}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [studentHeaders, ...studentRows] },
-    });
-
-    // 4. Clear and Update Fees Sheet
-    const feeHeaders = ['ID', 'Student Name', 'Roll Number', 'Payment Month', 'Amount', 'Payment Method', 'Payment Date', 'Receipt Number', 'Status', 'Notes'];
     const feeRows = (fees || []).map((f: any) => [
       f.id,
       f.students?.name || '',
@@ -80,17 +64,44 @@ export async function POST(request: NextRequest) {
       f.notes || ''
     ]);
 
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: config.spreadsheetId,
-      range: `${config.feeSheetName}!A:J`,
-    });
+    if (studentRows.length === 0 && feeRows.length === 0) {
+      return NextResponse.json(
+        { error: 'Database is empty. Aborting sync to prevent erasing your Google Sheet data.' },
+        { status: 400 }
+      );
+    }
 
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: config.spreadsheetId,
-      range: `${config.feeSheetName}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [feeHeaders, ...feeRows] },
-    });
+    // 3. Clear and Update Students Sheet
+    const studentHeaders = ['ID', 'Name', 'Roll Number', 'Class ID', 'Phone', 'WhatsApp', 'Parent Name', 'Monthly Fee', 'Admission Date', 'Status'];
+    if (studentRows.length > 0) {
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: config.spreadsheetId,
+        range: `${config.studentSheetName}!A:J`,
+      });
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.spreadsheetId,
+        range: `${config.studentSheetName}!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [studentHeaders, ...studentRows] },
+      });
+    }
+
+    // 4. Clear and Update Fees Sheet
+    const feeHeaders = ['ID', 'Student Name', 'Roll Number', 'Payment Month', 'Amount', 'Payment Method', 'Payment Date', 'Receipt Number', 'Status', 'Notes'];
+    if (feeRows.length > 0) {
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: config.spreadsheetId,
+        range: `${config.feeSheetName}!A:J`,
+      });
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.spreadsheetId,
+        range: `${config.feeSheetName}!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [feeHeaders, ...feeRows] },
+      });
+    }
 
     return NextResponse.json({ success: true, message: `Synced ${studentRows.length} students and ${feeRows.length} fee records.` });
   } catch (error: any) {
