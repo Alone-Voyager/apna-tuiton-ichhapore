@@ -12,23 +12,25 @@ export interface GoogleSheetsConfig {
 
 export async function getGoogleSheetsConfig(): Promise<GoogleSheetsConfig | null> {
   try {
-    const { data: integration, error } = await supabaseAdmin
-      .from('integration_settings')
-      .select('config, api_key, webhook_secret, is_active')
-      .eq('integration_type', 'google_sheets')
+    const { data: setting, error } = await supabaseAdmin
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'google_sheets_config')
       .single();
 
-    if (error || !integration) {
+    if (error || !setting || !setting.setting_value) {
       return null;
     }
 
+    const config = typeof setting.setting_value === 'string' ? JSON.parse(setting.setting_value) : setting.setting_value;
+
     return {
-      clientEmail: integration.api_key || '',
-      privateKey: integration.webhook_secret || '',
-      spreadsheetId: integration.config?.spreadsheetId || '',
-      studentSheetName: integration.config?.studentSheetName || 'Students',
-      feeSheetName: integration.config?.feeSheetName || 'Fee Payments',
-      isActive: integration.is_active ?? true,
+      clientEmail: config.clientEmail || '',
+      privateKey: config.privateKey || '',
+      spreadsheetId: config.spreadsheetId || '',
+      studentSheetName: config.studentSheetName || 'Students',
+      feeSheetName: config.feeSheetName || 'Fee Payments',
+      isActive: config.isActive ?? true,
     };
   } catch (error) {
     console.error('Error reading Google Sheets config from DB:', error);
@@ -39,29 +41,23 @@ export async function getGoogleSheetsConfig(): Promise<GoogleSheetsConfig | null
 export async function saveGoogleSheetsConfig(config: GoogleSheetsConfig, organizationId: string = 'default-org'): Promise<void> {
   try {
     const { data: existing } = await supabaseAdmin
-      .from('integration_settings')
+      .from('system_settings')
       .select('id')
-      .eq('integration_type', 'google_sheets')
+      .eq('setting_key', 'google_sheets_config')
       .maybeSingle();
 
     const payload = {
-      organization_id: organizationId,
-      integration_type: 'google_sheets',
-      api_key: config.clientEmail,
-      webhook_secret: config.privateKey,
-      is_active: config.isActive,
-      config: {
-        spreadsheetId: config.spreadsheetId,
-        studentSheetName: config.studentSheetName,
-        feeSheetName: config.feeSheetName,
-      },
+      setting_key: 'google_sheets_config',
+      setting_value: config,
+      setting_type: 'json',
+      description: 'Google Sheets Integration Configuration',
       updated_at: new Date().toISOString(),
     };
 
     if (existing) {
-      await supabaseAdmin.from('integration_settings').update(payload).eq('id', existing.id);
+      await supabaseAdmin.from('system_settings').update(payload).eq('id', existing.id);
     } else {
-      await supabaseAdmin.from('integration_settings').insert(payload);
+      await supabaseAdmin.from('system_settings').insert(payload);
     }
   } catch (error) {
     console.error('Error saving Google Sheets config to DB:', error);
