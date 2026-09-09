@@ -34,12 +34,11 @@ export async function GET(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    // Fetch pending/overdue fee payments
-    const { data: overduePayments } = await supabaseAdmin
+    // Fetch all fee payments
+    const { data: allFeePayments } = await supabaseAdmin
       .from('fee_payments')
       .select('*')
       .eq('student_id', id)
-      .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
       .order('due_date', { ascending: true });
 
     // Fetch paid payments
@@ -49,19 +48,18 @@ export async function GET(
       .eq('student_id', id)
       .eq('status', 'Paid');
 
-    const totalPaid = (paidPayments || []).reduce(
-      (sum: number, p: { paid_amount: any }) => sum + Number(p.paid_amount || 0),
+    // Calculate fee statistics
+    const allPayments = allFeePayments || [];
+    const pendingPayments = allPayments.filter((p: any) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status));
+    
+    const totalPaid = paidPayments?.reduce(
+      (sum: number, p: any) => sum + Number(p.paid_amount || 0),
       0
-    );
+    ) || 0;
 
-    const pendingPayments = overduePayments || [];
     const totalPendingMonths = pendingPayments.length;
-    const pendingAmount = pendingPayments.reduce(
-      (sum: number, p: { amount: any; paid_amount?: any }) =>
-        sum + Number(p.amount || 0) - Number(p.paid_amount || 0),
-      0
-    );
-    const pendingMonths = pendingPayments.map((p: { payment_month: any }) => p.payment_month);
+    const pendingAmount = pendingPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
+    const pendingMonths = pendingPayments.map((p: any) => p.payment_month);
 
     return NextResponse.json({
       data: {
@@ -70,7 +68,7 @@ export async function GET(
         totalPendingMonths,
         pendingAmount,
         pendingMonths,
-        feePayments: overduePayments || [],
+        fee_payments: allPayments,
         paymentHistory: paidPayments || []
       }
     });

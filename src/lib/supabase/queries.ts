@@ -69,12 +69,11 @@ export async function getStudentDetailsWithFees(id: string) {
     return { data: null, error: studentError };
   }
 
-  // Fetch pending/overdue fee payments (pending months) from fee_payments table
-  const { data: overduePayments, error: overdueError } = await supabase
+  // Fetch all fee payments for the timeline and stats
+  const { data: allFeePayments, error: overdueError } = await supabase
     .from('fee_payments')
     .select('*')
     .eq('student_id', id)
-    .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
     .order('due_date', { ascending: true });
 
   if (overdueError) {
@@ -98,7 +97,8 @@ export async function getStudentDetailsWithFees(id: string) {
     0
   ) || 0;
 
-  const pendingPayments = overduePayments || [];
+  const allPayments = allFeePayments || [];
+  const pendingPayments = allPayments.filter((p: any) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status));
   const totalPendingMonths = pendingPayments.length;
   const pendingAmount = pendingPayments.reduce((sum: number, p: { amount: any; paid_amount?: any; }) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
   const pendingMonths = pendingPayments.map((p: { payment_month: any; }) => p.payment_month);
@@ -110,7 +110,8 @@ export async function getStudentDetailsWithFees(id: string) {
       totalPendingMonths,
       pendingAmount,
       pendingMonths,
-      feePayments: overduePayments || [],
+      feePayments: allPayments,
+      fee_payments: allPayments, // Provide both camelCase and snake_case for compatibility
       paymentHistory: paidPayments || []
     },
     error: null
