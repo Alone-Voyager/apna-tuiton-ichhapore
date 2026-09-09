@@ -13,7 +13,7 @@ const req = https.request(options, res => {
   res.on('end', () => {
     try {
       const swagger = JSON.parse(data);
-      console.log('fee_payments properties:', swagger.definitions.fee_payments.properties.status);
+      console.log('fee_payment_history columns:', Object.keys(swagger.definitions.fee_payment_history.properties));
     } catch(e) {
       console.log('Parse error:', e);
     }

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Get student details using admin client (bypass RLS)
     const { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
-      .select('organization_id, name, status, is_active')
+      .select('name, status, is_active')
       .eq('id', student_id)
       .single();
 
