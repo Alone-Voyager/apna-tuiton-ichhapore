@@ -239,6 +239,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing student_id parameter' }, { status: 400 });
     }
 
+    // Auto-sync fee payments for this student to ensure pending months are up-to-date
+    const { syncStudentFeePayments } = await import('../../../../lib/fees-service');
+    await syncStudentFeePayments(supabaseAdmin, studentId);
+
     // Get pending/overdue months using admin client
     const { data, error } = await supabaseAdmin
       .from('fee_payments')
