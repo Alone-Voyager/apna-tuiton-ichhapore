@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
         redirect: redirectPath,
       });
       response.cookies.getAll().forEach(cookie => {
-        roleResponse.cookies.set(cookie.name, cookie.value);
+        roleResponse.cookies.set(cookie);
       });
       return roleResponse;
     }
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         redirect: '/student/dashboard',
       });
       response.cookies.getAll().forEach(cookie => {
-        roleResponse.cookies.set(cookie.name, cookie.value);
+        roleResponse.cookies.set(cookie);
       });
       return roleResponse;
     }
