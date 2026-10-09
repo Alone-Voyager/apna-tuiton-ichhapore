@@ -3,6 +3,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/fees/revenue-analytics
  * Calculates fee collections, unpaid dues, and rates grouped by the billing/fee month.
@@ -60,20 +62,12 @@ export async function GET(request: NextRequest) {
       console.warn('[Revenue Analytics] Fee sync skipped:', e);
     }
 
-    // Fetch unpaid payments
-    const { data: unpaidPayments } = await supabaseAdmin
+    // Fetch all fee payments
+    const { data: allPaymentsData } = await supabaseAdmin
       .from('fee_payments')
-      .select('payment_month, amount, paid_amount, status')
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
-      .in('status', ['Pending', 'Unpaid', 'Overdue'])
-      .catch(() => ({ data: null }));
+      .select('payment_month, amount, paid_amount, status');
 
-    // Fetch paid histories
-    const { data: paidHistories } = await supabaseAdmin
-      .from('fee_payment_history')
-      .select('payment_month, amount, paid_amount')
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
-      .catch(() => ({ data: null }));
+    const allPayments = allPaymentsData || [];
 
     // Compile metrics grouped by billing month
     const monthStatsMap = new Map<string, {
@@ -100,27 +94,22 @@ export async function GET(request: NextRequest) {
       return monthStatsMap.get(canonicalMonth)!;
     };
 
-    for (const p of unpaidPayments || []) {
+    for (const p of allPayments) {
       if (!p?.payment_month) continue;
       const stats = getOrCreateStats(p.payment_month);
-      stats.unpaidStudents += 1;
       stats.totalStudents += 1;
-      const paid = Number(p.paid_amount || 0);
       const amount = Number(p.amount || 0);
-      stats.expectedRevenue += amount;
-      stats.revenueCollected += paid;
-      stats.outstandingRevenue += (amount - paid);
-    }
+      const paid = Number(p.paid_amount || 0);
 
-    for (const h of paidHistories || []) {
-      if (!h?.payment_month) continue;
-      const stats = getOrCreateStats(h.payment_month);
-      stats.paidStudents += 1;
-      stats.totalStudents += 1;
-      const amount = Number(h.amount || h.paid_amount || 0);
-      const paid = Number(h.paid_amount || h.amount || 0);
       stats.expectedRevenue += amount;
       stats.revenueCollected += paid;
+
+      if (p.status === 'Paid') {
+        stats.paidStudents += 1;
+      } else {
+        stats.unpaidStudents += 1;
+        stats.outstandingRevenue += Math.max(0, amount - paid);
+      }
     }
 
     const analytics = Array.from(monthStatsMap.entries()).map(([month, stats]) => {

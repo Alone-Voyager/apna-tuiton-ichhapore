@@ -97,20 +97,29 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     const completedBillingMonths = getCompletedBillingMonths(student.admission_date, currentDate);
     const completedBillingMonthsNames = completedBillingMonths.map(m => m.monthName.toLowerCase());
 
-    // 3. Fetch existing payments from both tables
-    const [existingPaymentsRes, existingHistoryRes] = await Promise.all([
-      supabase.from('fee_payments').select('*').eq('student_id', studentId),
-      supabase.from('fee_payment_history').select('*').eq('student_id', studentId)
-    ]);
+    // 3. Fetch existing payments from fee_payments
+    const { data: existingPaymentsData, error: paymentsError } = await supabase
+      .from('fee_payments')
+      .select('*')
+      .eq('student_id', studentId);
 
-    const existingPayments = existingPaymentsRes.data || [];
-    const existingHistory = existingHistoryRes.data || [];
+    if (paymentsError) {
+      console.error('Error fetching existing fee payments:', paymentsError);
+    }
 
-    const paidMonthsNames = new Set([
-      ...existingHistory.map((h: any) => h.payment_month?.toLowerCase()).filter(Boolean),
-      ...existingPayments.filter((p: any) => p.status === 'Paid').map((p: any) => p.payment_month?.toLowerCase()).filter(Boolean)
-    ]);
-    const unpaidMonthsMap = new Map<string, any>(existingPayments.map((p: any) => [p.payment_month.toLowerCase(), p]));
+    const existingPayments = existingPaymentsData || [];
+
+    const paidMonthsNames = new Set(
+      existingPayments
+        .filter((p: any) => p.status === 'Paid' || Number(p.paid_amount) > 0)
+        .map((p: any) => p.payment_month?.toLowerCase())
+        .filter(Boolean)
+    );
+    const unpaidMonthsMap = new Map<string, any>(
+      existingPayments
+        .filter((p: any) => p.status !== 'Paid' && Number(p.paid_amount || 0) === 0)
+        .map((p: any) => [p.payment_month?.toLowerCase(), p])
+    );
 
     // 4. For each completed billing month, sync its record
     const entriesToInsert = [];
@@ -118,7 +127,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     for (const billingMonth of completedBillingMonths) {
       const monthLower = billingMonth.monthName.toLowerCase();
 
-      // If it has been paid (exists in fee_payment_history), do nothing.
+      // If it has been paid, do nothing.
       if (paidMonthsNames.has(monthLower)) {
         continue;
       }
@@ -162,15 +171,12 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
       }
     }
 
-    // 5. Clean up any fee_payments records whose month name is NOT in the valid
-    //    completed billing months list. This catches both wrong-named records from
-    //    the old logic and records for months that are no longer due (e.g. admission
-    //    date moved forward). Only skip if the record is in fee_payment_history (paid).
+    // 5. Clean up any unpaid fee_payments records whose month name is NOT in the valid
+    //    completed billing months list. NEVER delete paid records.
     const toDelete = existingPayments.filter((p: any) => {
-      const monthLower = p.payment_month.toLowerCase();
-      // Keep it if it is already tracked as paid in history
+      if (p.status === 'Paid' || Number(p.paid_amount) > 0) return false;
+      const monthLower = p.payment_month?.toLowerCase();
       if (paidMonthsNames.has(monthLower)) return false;
-      // Delete it if it is not a valid due month according to the current billing logic
       return !completedBillingMonthsNames.includes(monthLower);
     });
 
@@ -219,38 +225,25 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       return;
     }
 
-    // 3. Fetch all paid fee histories for the organization
-    let paidQuery = supabase
-      .from('fee_payment_history')
-      .select('student_id, payment_month')
-      .then((res: any) => res)
-      .catch(() => ({ data: [] })); // Catch error since table does not exist
-    
-    const { data: allPaidData, error: paidError } = await paidQuery;
-
-    const allPaid = allPaidData || [];
-    if (paidError) {
-      console.warn('fee_payment_history query warning (using fee_payments status=Paid fallback):', paidError.message);
-    }
-
-    // 4. Group by student_id
+    // 3. Group payments by student_id into paid and unpaid
     const unpaidByStudent = new Map<string, any[]>();
     const paidByStudent = new Map<string, Set<string>>();
 
     for (const payment of allUnpaid || []) {
       const sId = payment.student_id;
-      if (!unpaidByStudent.has(sId)) {
-        unpaidByStudent.set(sId, []);
+      if (payment.status === 'Paid' || Number(payment.paid_amount) > 0) {
+        if (!paidByStudent.has(sId)) {
+          paidByStudent.set(sId, new Set());
+        }
+        if (payment.payment_month) {
+          paidByStudent.get(sId)!.add(payment.payment_month.toLowerCase());
+        }
+      } else {
+        if (!unpaidByStudent.has(sId)) {
+          unpaidByStudent.set(sId, []);
+        }
+        unpaidByStudent.get(sId)!.push(payment);
       }
-      unpaidByStudent.get(sId)!.push(payment);
-    }
-
-    for (const history of allPaid || []) {
-      const sId = history.student_id;
-      if (!paidByStudent.has(sId)) {
-        paidByStudent.set(sId, new Set());
-      }
-      paidByStudent.get(sId)!.add(history.payment_month.toLowerCase());
     }
 
     const entriesToInsert: any[] = [];
@@ -312,9 +305,10 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       }
 
       // Identify records in fee_payments that are NOT valid completed billing months
-      // Only keep it if it is already tracked as paid in history
+      // Never delete paid records
       const toDelete = studentUnpaidPayments.filter(p => {
-        const monthLower = p.payment_month.toLowerCase();
+        if (p.status === 'Paid' || Number(p.paid_amount) > 0) return false;
+        const monthLower = p.payment_month?.toLowerCase();
         if (studentPaidMonths.has(monthLower)) return false;
         return !completedBillingMonthsNames.includes(monthLower);
       });

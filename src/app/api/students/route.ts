@@ -4,6 +4,8 @@ import { supabaseAdmin } from '../../../lib/supabase/client';
 import { sendAdmissionWelcome } from '../../../lib/admission-notification-service';
 import { syncStudentFeePayments } from '../../../lib/fees-service';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/students - Fetch students for the organization
 export async function GET(request: NextRequest) {
   try {
@@ -70,11 +72,11 @@ export async function GET(request: NextRequest) {
     let enrichedStudents = students || [];
 
     if (feeStatus === 'paid') {
-      // Fetch students who have paid fees from fee_payment_history
+      // Fetch students who have paid fees from fee_payments
       const { data: paidPayments, error: paidError } = await supabaseAdmin
-        .from('fee_payment_history')
+        .from('fee_payments')
         .select('student_id, payment_month')
-        // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
+        .eq('status', 'Paid')
         .in('student_id', enrichedStudents.map((s: any) => s.id));
 
       if (!paidError && paidPayments) {

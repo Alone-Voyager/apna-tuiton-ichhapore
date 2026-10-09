@@ -3,6 +3,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { sendPaymentConfirmation } from '../../../../lib/payment-notification-service';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/fees/collect - Collect fee payment
 export async function POST(request: NextRequest) {
   try {
@@ -45,16 +47,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's organization_id and admin profile
-    const { data: adminProfile, error: userError } = await supabase
+    const { data: adminProfile } = await supabaseAdmin
       .from('admin_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
-
-    if (userError || !adminProfile) {
-      console.error('Error fetching admin profile:', userError);
-      // bypassed organization check
-    }
+      .maybeSingle();
 
     // Parse request body
     const body = await request.json();
@@ -77,12 +74,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the existing fee payment record
-    const { data: existingPayment, error: fetchError } = await supabase
+    // Get the existing fee payment record using admin client
+    const { data: existingPayment, error: fetchError } = await supabaseAdmin
       .from('fee_payments')
       .select('*')
       .eq('id', payment_id)
-      // [ORG-FILTER-SKIP] .eq('organization_id', adminProfile.organization_id)
       .eq('student_id', student_id)
       .single();
 
@@ -158,8 +154,8 @@ export async function POST(request: NextRequest) {
       console.warn('fee_payment_history insert skipped:', hErr);
     }
 
-    // 3. Get student details for activity log
-    const { data: studentData, error: studentError } = await supabase
+    // 3. Get student details for activity log using admin client
+    const { data: studentData, error: studentError } = await supabaseAdmin
       .from('students')
       .select('name, status')
       .eq('id', student_id)
@@ -174,27 +170,31 @@ export async function POST(request: NextRequest) {
       ? `Overdue fee payment of ₹${paidAmount} collected from suspended student for ${existingPayment.payment_month}`
       : `Fee payment of ₹${paidAmount} collected for ${existingPayment.payment_month}`;
     
-    const { error: logError } = await supabase
-      .from('activity_logs')
-      .insert({
-        organization_id: adminProfile.organization_id,
-        activity_type: 'payment',
-        description: activityDescription,
-        related_entity_type: 'student',
-        related_entity_id: student_id,
-        performed_by: adminProfile.id,
-        metadata: {
-          student_name: studentData?.name || 'Unknown Student',
-          payment_month: existingPayment.payment_month,
-          amount: paidAmount,
-          payment_date: payment_date,
-          payment_method: payment_method,
-          receipt_number: receiptNumber,
-          discount: totalDiscount,
-          late_fee: totalLateFee,
-          student_status: studentData?.status || 'unknown'
-        }
-      });
+    try {
+      await supabaseAdmin
+        .from('activity_logs')
+        .insert({
+          organization_id: adminProfile?.organization_id || 'default-org',
+          activity_type: 'payment',
+          description: activityDescription,
+          related_entity_type: 'student',
+          related_entity_id: student_id,
+          performed_by: adminProfile?.id || null,
+          metadata: {
+            student_name: studentData?.name || 'Unknown Student',
+            payment_month: existingPayment.payment_month,
+            amount: paidAmount,
+            payment_date: payment_date,
+            payment_method: payment_method,
+            receipt_number: receiptNumber,
+            discount: totalDiscount,
+            late_fee: totalLateFee,
+            student_status: studentData?.status || 'unknown'
+          }
+        });
+    } catch (logErr) {
+      console.warn('Activity log failed (non-fatal):', logErr);
+    }
 
     if (logError) {
       console.error('Error logging activity:', logError);

@@ -3,6 +3,9 @@ import { getRequestOrgContext } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { syncAllStudentFeePayments } from '@/lib/fees-service';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // GET /api/fees/stats - Fetch fee payment statistics
 export async function GET(request: NextRequest) {
   try {
@@ -181,35 +184,7 @@ export async function GET(request: NextRequest) {
       payment_month: fp.payment_month
     })));
 
-    // Fetch ONLY paid fees from history for current month
-    const { data: paidHistory, error: historyError } = await supabaseAdmin
-      .from('fee_payment_history')
-      .select(`
-        *,
-        students!inner(
-          id,
-          name,
-          roll_number,
-          class_id,
-          admission_date,
-          monthly_fee,
-          status,
-          whatsapp,
-          classes(
-            id,
-            name,
-            monthly_fee
-          )
-        )
-      `)
-      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
-      .eq('payment_month', filterMonth);
-
-    if (historyError) {
-      console.error('Error fetching payment history:', historyError);
-      // Don't fail the request, just log the error
-    }
-
+    // Calculate active student status helper
     const isStudentActive = (s: any) => {
       const isDeleted = s.status === 'inactive' || s.status === 'deleted' || s.status === 'archived' || s.status === 'suspended';
       const isExplicitlyInactive = s.is_active === false;
@@ -217,8 +192,7 @@ export async function GET(request: NextRequest) {
     };
 
     const studentsWithOverdueOrPaidInFilteredMonth = new Set([
-      ...(feePayments?.filter((fp: any) => fp.status === 'Overdue').map((fp: any) => fp.student_id) || []),
-      ...(paidHistory?.map((fp: any) => fp.student_id) || [])
+      ...(feePayments?.filter((fp: any) => fp.status === 'Overdue' || (fp.status === 'Paid' && fp.payment_month === filterMonth)).map((fp: any) => fp.student_id) || [])
     ]);
 
     const filteredStudents = allStudents?.filter((student: any) => {
@@ -231,19 +205,15 @@ export async function GET(request: NextRequest) {
 
     const validStudentIds = new Set(filteredStudents?.map((s: any) => s.id) || []);
     const validFeePayments = feePayments?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
-    const validPaidHistory = paidHistory?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
 
     const totalStudents = filteredStudents?.length || 0;
+    const paidCount = validFeePayments.filter((fp: any) => fp.status === 'Paid' && fp.payment_month === filterMonth).length;
     const unpaidCount = validFeePayments.filter((fp: any) => (fp.status === 'Pending' || fp.status === 'Unpaid') && fp.payment_month === filterMonth).length;
-    const paidCount = validPaidHistory.length;
     const overdueCount = validFeePayments.filter((fp: any) => fp.status === 'Overdue').length;
     const partialCount = validFeePayments.filter((fp: any) => fp.status === 'Partial').length;
 
-    const totalFees = (validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.amount), 0)) +
-                        (validPaidHistory.reduce((sum: number, fp: any) => sum + Number(fp.amount), 0));
-    
-    const collectedFees = (validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.paid_amount || 0), 0)) +
-                         (validPaidHistory.reduce((sum: number, fp: any) => sum + Number(fp.paid_amount), 0));
+    const totalFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.amount || 0), 0);
+    const collectedFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.paid_amount || 0), 0);
 
     // Fetch all classes for organization to ensure empty classes appear correctly
     const { data: orgClasses } = await supabaseAdmin
@@ -352,61 +322,13 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      classStats.totalFees += Number(fp.amount);
+      classStats.totalFees += Number(fp.amount || 0);
       classStats.collectedFees += Number(fp.paid_amount || 0);
       
-      if (fp.status === 'Unpaid') classStats.unpaidCount++;
-      if (fp.status === 'Overdue') classStats.overdueCount++;
-      if (fp.status === 'Partial') classStats.partialCount++;
-    });
-
-    // Process paid history - ONLY for valid active/suspended students
-    validPaidHistory.forEach((fp: any) => {
-      const student = fp.students;
-      const classData = student?.classes;
-      const className = classData?.name || 'Unassigned';
-
-      if (!classFeeMap.has(className)) {
-        return;
-      }
-
-      const classStats = classFeeMap.get(className);
-      
-      if (student && !classStats.students.has(fp.student_id)) {
-        classStats.students.set(fp.student_id, {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.roll_number,
-          admissionDate: student.admission_date,
-          monthlyFee: student.monthly_fee,
-          status: student.status,
-          is_active: student.is_active,
-          whatsapp: student.whatsapp,
-          feePayments: []
-        });
-      }
-
-      if (classStats.students.has(fp.student_id)) {
-        const studentData = classStats.students.get(fp.student_id);
-        studentData.feePayments.push({
-          id: fp.id,
-          amount: fp.amount,
-          paidAmount: fp.paid_amount,
-          status: 'Paid',
-          paymentMonth: fp.payment_month,
-          paymentDate: fp.payment_date,
-          dueDate: fp.due_date,
-          paymentMethod: fp.payment_method,
-          receiptNumber: fp.receipt_number,
-          discount: fp.discount,
-          lateFee: fp.late_fee,
-          notes: fp.notes,
-        });
-      }
-
-      classStats.totalFees += Number(fp.amount);
-      classStats.collectedFees += Number(fp.paid_amount);
-      classStats.paidCount++;
+      if (fp.status === 'Paid') classStats.paidCount++;
+      else if (fp.status === 'Pending' || fp.status === 'Unpaid') classStats.unpaidCount++;
+      else if (fp.status === 'Overdue') classStats.overdueCount++;
+      else if (fp.status === 'Partial') classStats.partialCount++;
     });
 
     // Convert Map to array format

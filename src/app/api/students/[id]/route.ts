@@ -4,6 +4,9 @@ import { supabaseAdmin } from '../../../../lib/supabase/client';
 import bcrypt from 'bcryptjs';
 import { syncStudentFeePayments } from '../../../../lib/fees-service';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // GET /api/students/[id] - Get student details with fee statistics
 export async function GET(
   request: NextRequest,
@@ -61,7 +64,7 @@ export async function GET(
     const pendingAmount = pendingPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
     const pendingMonths = pendingPayments.map((p: any) => p.payment_month);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       data: {
         ...student,
         totalPaid,
@@ -72,6 +75,8 @@ export async function GET(
         paymentHistory: paidPayments || []
       }
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res;
   } catch (error: any) {
     console.error('Unexpected error in GET /api/students/[id]:', error);
     return NextResponse.json(

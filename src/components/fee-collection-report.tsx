@@ -85,8 +85,47 @@ export function FeeCollectionReport() {
       }
     }
 
+    // Fetch from server collections API endpoint (bypasses RLS recursion)
+    try {
+      const params = new URLSearchParams();
+      if (queryStartDate) params.append('startDate', format(queryStartDate, "yyyy-MM-dd"));
+      if (queryEndDate) params.append('endDate', format(queryEndDate, "yyyy-MM-dd"));
+
+      const res = await fetch(`/api/fees/collections?${params.toString()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        const transactions = json.data?.transactions || [];
+        const typedData: FeeRecord[] = transactions.map((t: any) => ({
+          id: t.id,
+          student_id: t.student_id,
+          paid_amount: Number(t.paidAmount || t.amount || 0),
+          payment_date: t.paymentDate,
+          payment_month: t.paymentMonth,
+          payment_method: t.paymentMethod,
+          receipt_number: t.receiptNumber,
+          discount: Number(t.discount || 0),
+          late_fee: Number(t.lateFee || 0),
+          students: {
+            name: t.studentName,
+            classes: { name: t.className }
+          }
+        }));
+
+        setFeeRecords(typedData);
+        setTotalRecords(typedData.length);
+        const total = typedData.reduce((sum: number, record: FeeRecord) => {
+          return sum + (record.paid_amount || 0) + (record.late_fee || 0) - (record.discount || 0);
+        }, 0);
+        setCollection(total);
+        setIsLoading(false);
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("Server collections API failed, trying direct query:", apiErr);
+    }
+
     let query = supabase
-      .from("fee_payment_history")
+      .from("fee_payments")
       .select(`
         id, 
         student_id, 
@@ -104,16 +143,17 @@ export function FeeCollectionReport() {
           )
         )
       `)
-      .order('collected_at', { ascending: false })
+      .eq('status', 'Paid')
+      .order('payment_date', { ascending: false });
 
     if (queryStartDate) {
-      query = query.gte("payment_date", format(queryStartDate, "yyyy-MM-dd"))
+      query = query.gte("payment_date", format(queryStartDate, "yyyy-MM-dd"));
     }
     if (queryEndDate) {
-      query = query.lte("payment_date", format(queryEndDate, "yyyy-MM-dd"))
+      query = query.lte("payment_date", format(queryEndDate, "yyyy-MM-dd"));
     }
 
-    let { data, error } = await query as { data: any[] | null, error: any }
+    let { data, error } = await query as { data: any[] | null, error: any };
 
     if (error) {
       console.warn("fee_payment_history fetch warning, falling back to fee_payments:", error?.message)

@@ -47,7 +47,7 @@ export async function getStudentById(id: string) {
 export async function getStudentDetailsWithFees(id: string) {
   // First try fetching from server API endpoint (bypasses browser client RLS issues)
   try {
-    const res = await fetch(`/api/students/${id}`);
+    const res = await fetch(`/api/students/${id}`, { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.data) {
