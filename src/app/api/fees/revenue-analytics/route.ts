@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
-import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -11,14 +10,6 @@ export const revalidate = 0;
  */
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
-
-    // Sync student fee payments safely without organization_id filter
-    try {
-      await syncAllStudentFeePayments(supabaseAdmin);
-    } catch (e) {
-      console.warn('[Revenue Analytics] Fee sync skipped:', e);
-    }
 
     // 1. Fetch active students to get active count and target monthly fee
     const { data: studentsData, error: studentsError } = await supabaseAdmin
@@ -177,12 +168,16 @@ export async function GET(request: NextRequest) {
     };
     analytics.sort((a, b) => parseMonthYear(a.month) - parseMonthYear(b.month));
 
-    response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
       success: true,
       analytics,
       summary,
-    }, { status: 200, headers: response.headers });
+    }, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
 
   } catch (error: any) {
     console.error('Revenue analytics error:', error);
