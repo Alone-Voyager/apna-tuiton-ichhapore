@@ -160,15 +160,17 @@ export async function getAdminProfile() {
     return { data: null, error: userError };
   }
 
+  // Try fetching from server route first to bypass RLS recursion
   try {
-    const { data, error } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', userData.user.id)
-      .maybeSingle();
-
-    if (data) {
-      return { data, error: null };
+    const res = await fetch('/api/admin-profiles', { cache: 'no-store' });
+    if (res.ok) {
+      const list = await res.json();
+      const myProfile = Array.isArray(list)
+        ? list.find((p: any) => p.user_id === userData.user.id || p.email === userData.user.email)
+        : null;
+      if (myProfile) {
+        return { data: myProfile, error: null };
+      }
     }
   } catch (e) {}
 

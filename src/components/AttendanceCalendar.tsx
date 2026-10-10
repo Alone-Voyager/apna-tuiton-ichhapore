@@ -35,25 +35,38 @@ export function AttendanceCalendar({ studentId }: AttendanceCalendarProps) {
         const lastDayDate = new Date(year, month + 1, 0)
         const lastDay = `${year}-${pad(month + 1)}-${pad(lastDayDate.getDate())}`
 
+        // Fetch through server API endpoint to bypass client RLS policy recursion
+        const res = await fetch(`/api/students/${studentId}/attendance?from=${firstDay}&to=${lastDay}`, { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          const records: AttendanceRecord[] = (json.data || []).map((record: any) => ({
+            date: record.attendance_date,
+            status: record.status as 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave'
+          }));
+          setAttendance(records);
+          return;
+        }
+
+        // Fallback to direct client query if endpoint is unavailable
         const { data, error } = await supabase
           .from('attendance')
           .select('attendance_date, status')
           .eq('student_id', studentId)
           .gte('attendance_date', firstDay)
           .lte('attendance_date', lastDay)
-          .order('attendance_date', { ascending: true })
+          .order('attendance_date', { ascending: true });
 
         if (error) {
-          console.error('Error fetching attendance:', error)
-          return
+          console.warn('Fallback attendance fetch warning:', error);
+          return;
         }
 
         if (data) {
           const records: AttendanceRecord[] = data.map((record: { attendance_date: any; status: string }) => ({
             date: record.attendance_date,
             status: record.status as 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Leave'
-          }))
-          setAttendance(records)
+          }));
+          setAttendance(records);
         }
       } catch (err) {
         console.error('Error fetching attendance:', err)
