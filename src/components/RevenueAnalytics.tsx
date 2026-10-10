@@ -99,13 +99,14 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
   const selectedStats = isOverall && summary
     ? {
         month: 'All Months (Overall)',
-        totalStudents: summary.totalPayments || analytics.reduce((s, i) => s + i.totalStudents, 0),
-        paidStudents: summary.paidCount || analytics.reduce((s, i) => s + i.paidStudents, 0),
-        unpaidStudents: summary.unpaidCount || analytics.reduce((s, i) => s + i.unpaidStudents, 0),
-        expectedRevenue: summary.expectedRevenue || analytics.reduce((s, i) => s + i.expectedRevenue, 0),
-        revenueCollected: summary.revenueCollected || analytics.reduce((s, i) => s + i.revenueCollected, 0),
-        outstandingRevenue: summary.outstandingRevenue || analytics.reduce((s, i) => s + i.outstandingRevenue, 0),
-        collectionRate: summary.collectionRate,
+        // Use nullish coalescing (??) so 0 values don't fall back to the reduce
+        totalStudents: summary.totalPayments ?? analytics.reduce((s, i) => s + i.totalStudents, 0),
+        paidStudents: summary.paidCount ?? analytics.reduce((s, i) => s + i.paidStudents, 0),
+        unpaidStudents: summary.unpaidCount ?? analytics.reduce((s, i) => s + i.unpaidStudents, 0),
+        expectedRevenue: summary.expectedRevenue ?? analytics.reduce((s, i) => s + i.expectedRevenue, 0),
+        revenueCollected: summary.revenueCollected ?? analytics.reduce((s, i) => s + i.revenueCollected, 0),
+        outstandingRevenue: summary.outstandingRevenue ?? analytics.reduce((s, i) => s + i.outstandingRevenue, 0),
+        collectionRate: summary.collectionRate ?? 0,
       }
     : analytics.find(
         item => item.month.toLowerCase() === selectedMonth.toLowerCase()
@@ -237,7 +238,7 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
               <p className="text-xs font-bold text-indigo-600/80 uppercase tracking-wider mb-1">Collection Rate</p>
               <p className="text-3xl font-black text-indigo-700">{selectedStats.collectionRate}%</p>
               <p className="text-xs text-indigo-600 mt-2 font-medium">
-                {selectedStats.paidStudents}/{selectedStats.totalStudents} {isOverall ? 'Receipts Paid' : 'Students Paid'}
+                ₹{(selectedStats.revenueCollected || 0).toLocaleString('en-IN')} of ₹{(selectedStats.expectedRevenue || 0).toLocaleString('en-IN')} {isOverall ? 'collected overall' : 'collected'}
               </p>
             </div>
             <div className="bg-indigo-100 p-3 rounded-full text-indigo-700">

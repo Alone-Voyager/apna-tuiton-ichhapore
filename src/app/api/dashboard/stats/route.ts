@@ -73,20 +73,25 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Get total outstanding amount (Unpaid, Pending, Overdue, Partial)
+    // Fetch ALL fee payments that are not fully paid to compute the real outstanding balance
     const { data: outstandingPayments, error: outstandingError } = await db
       .from('fee_payments')
-      .select('amount, paid_amount')
+      .select('amount, paid_amount, status')
       .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial']);
 
     if (outstandingError) {
       console.error('Error fetching outstanding payments:', outstandingError);
     }
 
-    // Calculate total outstanding: amount - paid_amount for each unpaid record
-    const totalOutstanding = outstandingPayments?.reduce(
-      (sum: number, payment: any) => sum + Math.max(0, Number(payment.amount || 0) - Number(payment.paid_amount || 0)),
+    // Outstanding = (amount - paid_amount) for every non-Paid record, including Partial
+    // This correctly captures both fully-unpaid and partially-paid dues
+    const totalOutstanding = (outstandingPayments || []).reduce(
+      (sum: number, payment: any) => {
+        const due = Math.max(0, Number(payment.amount || 0) - Number(payment.paid_amount || 0));
+        return sum + due;
+      },
       0
-    ) || 0;
+    );
 
     // 5. Calculate Expected Monthly Revenue (Sum of monthly_fee for all active students)
     const expectedMonthlyRevenue = activeStudents.reduce((sum: number, student: any) => {

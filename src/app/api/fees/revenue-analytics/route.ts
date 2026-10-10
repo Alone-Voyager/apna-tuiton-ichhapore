@@ -85,25 +85,31 @@ export async function GET(request: NextRequest) {
       stats.expectedRevenue += amount;
       stats.revenueCollected += paid;
 
+      // Outstanding = remaining balance for ALL non-Paid entries (including Partial)
       if (p.status === 'Paid') {
         stats.paidStudents += 1;
       } else {
         stats.unpaidStudents += 1;
+        // For Partial: amount - paid_amount = remaining; for Unpaid/Overdue: full amount
         stats.outstandingRevenue += Math.max(0, amount - paid);
       }
     }
 
-    // Ensure the current month (e.g., October 2026) is always included
+    // Only inject current month placeholder if NO fee records exist for it yet
+    // This prevents a phantom "empty" current month card appearing incorrectly
     const currentMonthStr = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
     if (!monthStatsMap.has(currentMonthStr)) {
-      monthStatsMap.set(currentMonthStr, {
-        totalStudents: totalActiveStudents,
-        paidStudents: 0,
-        unpaidStudents: totalActiveStudents,
-        expectedRevenue: Math.round(activeMonthlyTarget),
-        revenueCollected: 0,
-        outstandingRevenue: Math.round(activeMonthlyTarget),
-      });
+      // Only add current month if we have active students (tuition is ongoing)
+      if (totalActiveStudents > 0) {
+        monthStatsMap.set(currentMonthStr, {
+          totalStudents: totalActiveStudents,
+          paidStudents: 0,
+          unpaidStudents: totalActiveStudents,
+          expectedRevenue: Math.round(activeMonthlyTarget),
+          revenueCollected: 0,
+          outstandingRevenue: Math.round(activeMonthlyTarget),
+        });
+      }
     }
 
     // Calculate overall totals
@@ -123,6 +129,7 @@ export async function GET(request: NextRequest) {
       overallTotalPayments += stats.totalStudents;
     }
 
+    // Overall collection rate based on revenue amounts (more accurate than student count)
     const overallCollectionRate = overallExpected > 0
       ? Math.round((overallCollected / overallExpected) * 100)
       : 0;
@@ -139,8 +146,9 @@ export async function GET(request: NextRequest) {
     };
 
     const analytics = Array.from(monthStatsMap.entries()).map(([month, stats]) => {
-      const collectionRate = stats.totalStudents > 0
-        ? Math.round((stats.paidStudents / stats.totalStudents) * 100)
+      // Per-month collection rate: revenue-based (collected / expected * 100)
+      const collectionRate = stats.expectedRevenue > 0
+        ? Math.round((stats.revenueCollected / stats.expectedRevenue) * 100)
         : 0;
 
       return {
@@ -155,12 +163,19 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Chronological sorting (April 2026, May 2026, ..., October 2026)
-    analytics.sort((a, b) => {
-      const dateA = new Date(a.month + ' 1');
-      const dateB = new Date(b.month + ' 1');
-      return dateA.getTime() - dateB.getTime();
-    });
+    // Robust chronological sort: parse "Month YYYY" safely via a month-name map
+    const MONTH_IDX: Record<string, number> = {
+      january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+      july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+    };
+    const parseMonthYear = (label: string): number => {
+      const parts = label.trim().split(' ');
+      if (parts.length < 2) return 0;
+      const monthIdx = MONTH_IDX[parts[0].toLowerCase()] ?? 0;
+      const year = parseInt(parts[parts.length - 1], 10) || 0;
+      return year * 12 + monthIdx;
+    };
+    analytics.sort((a, b) => parseMonthYear(a.month) - parseMonthYear(b.month));
 
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
