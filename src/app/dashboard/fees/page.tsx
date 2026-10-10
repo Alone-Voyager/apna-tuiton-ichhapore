@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react';
-import { Users2, CheckCircle, Clock, AlertTriangle, PieChart, ArrowRight, ArrowLeft, DollarSign, X, Check, Loader2, Search } from 'lucide-react';
+import { Users2, CheckCircle, Clock, AlertTriangle, PieChart, ArrowRight, ArrowLeft, DollarSign, X, Check, Loader2, Search, Calendar } from 'lucide-react';
 import RevenueAnalytics from '../../../components/RevenueAnalytics';
 import PendingStudentsReportCard from '../../../components/PendingStudentsReportCard';
 import {
@@ -62,6 +62,7 @@ interface StatsData {
   collectedFees: number;
   expectedMonthlyRevenue?: number;
   currentMonth: string;
+  availableMonths?: string[];
 }
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -78,7 +79,7 @@ function FeesPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'all' | 'paid' | 'unpaid' | 'overdue'>('all');
-  const [selectedMonth, setSelectedMonth] = useState<string>(''); // Empty means current month
+  const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' means all months (overall view)
   const [testDate, setTestDate] = useState<string>(''); // Empty means current date
   const [searchQuery, setSearchQuery] = useState<string>(''); // Search query for students
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -145,8 +146,9 @@ function FeesPageContent() {
       setLoading(true);
       setError('');
 
-      // Generate monthly entries for the selected/current month (only once per month)
-      const monthToGenerate = selectedMonth || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      // Generate monthly entries for the current month (only once per month in session)
+      const currentCalMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const monthToGenerate = (selectedMonth && selectedMonth !== 'all') ? selectedMonth : currentCalMonth;
 
       // Only generate if we haven't generated for this month yet in this session
       if (!monthsGenerated.has(monthToGenerate)) {
@@ -304,10 +306,12 @@ function FeesPageContent() {
     if (selectedTab === 'all') return students;
 
     return students.filter((student) => {
-      // Check if student has ANY payment matching the selected tab status
+      // Check if student has ANY payment matching the selected tab status (and month if specific month chosen)
       return (student.feePayments || []).some((payment) => {
         const actualStatus = calculateActualStatus(payment);
-        return actualStatus === selectedTab;
+        const matchesTab = actualStatus === selectedTab;
+        const matchesMonth = selectedMonth === 'all' || !selectedMonth || payment.paymentMonth === selectedMonth;
+        return matchesTab && (selectedTab === 'overdue' ? true : matchesMonth);
       });
     });
   };
@@ -320,7 +324,9 @@ function FeesPageContent() {
 
     return (student.feePayments || []).filter((payment) => {
       const actualStatus = calculateActualStatus(payment);
-      return actualStatus === selectedTab;
+      const matchesTab = actualStatus === selectedTab;
+      const matchesMonth = selectedMonth === 'all' || !selectedMonth || payment.paymentMonth === selectedMonth;
+      return matchesTab && (selectedTab === 'overdue' ? true : matchesMonth);
     });
   };
 
@@ -338,6 +344,21 @@ function FeesPageContent() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedClass, selectedTab, searchQuery]);
+
+  const currentCalendarMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const monthOptions = Array.from(
+    new Set([
+      currentCalendarMonth,
+      ...(stats?.availableMonths || []),
+      'October 2026',
+      'September 2026',
+      'August 2026',
+      'July 2026',
+      'June 2026',
+      'May 2026',
+      'April 2026'
+    ])
+  );
 
   if (loading) {
     return (
@@ -374,66 +395,40 @@ function FeesPageContent() {
   return (
     <div className="min-h-full bg-slate-50">
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6">
-          {/* Month Selector for Testing - COMMENTED OUT FOR PRODUCTION */}
-
-          {/* <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-yellow-800">🧪 Test Mode</span>
-                <span className="text-xs text-yellow-600">(Remove in production)</span>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-yellow-700">
-                    Select Month to View:
-                  </label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-3 py-2 text-sm border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">Current Month (November 2025)</option>
-                    <option value="November 2025">November 2025</option>
-                    <option value="December 2025">December 2025</option>
-                    <option value="January 2026">January 2026</option>
-                    <option value="February 2026">February 2026</option>
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-yellow-700">
-                    Simulate Date (for status testing):
-                  </label>
-                  <input
-                    type="date"
-                    value={testDate}
-                    onChange={(e) => setTestDate(e.target.value)}
-                    className="px-3 py-2 text-sm border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
-                    placeholder="Leave empty for today"
-                  />
-                </div>
-              </div>
-
-              <div className="text-xs text-yellow-700 bg-yellow-100 rounded p-2">
-                <strong>How Status Changes Work:</strong>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><strong>Unpaid → Overdue:</strong> When payment month ends (e.g., Nov 30 → Dec 1)</li>
-                  <li><strong>Overdue Days:</strong> Counted from the 1st day of next month (Dec 1, Dec 2, etc.)</li>
-                  <li><strong>Example:</strong> Set date to "2025-12-01" to see November fees become "Overdue"</li>
-                  <li><strong>Note:</strong> All overdue payments from any month are displayed, not just current month</li>
-                </ul>
-              </div>
-
-              {(selectedMonth || testDate) && (
-                <div className="text-xs text-yellow-800 font-medium">
-                  📅 Testing with: 
-                  {selectedMonth && <span className="ml-1">Month: <strong>{selectedMonth}</strong></span>}
-                  {testDate && <span className="ml-2">Date: <strong>{new Date(testDate).toLocaleDateString()}</strong></span>}
-                </div>
-              )}
+          {/* Top Bar with Title and Month Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <DollarSign className="w-6 h-6 text-indigo-600" />
+                Fee Management Dashboard
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Overview of student fee records, collections, and overdue dues
+              </p>
             </div>
-          </div> */}
+
+            <div className="flex items-center gap-3 self-start sm:self-auto">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl shadow-xs">
+                <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+                <label htmlFor="billing-month-select" className="text-xs font-bold text-slate-600 whitespace-nowrap">
+                  Billing Month:
+                </label>
+                <select
+                  id="billing-month-select"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="text-xs sm:text-sm font-bold text-indigo-900 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer pr-1"
+                >
+                  <option value="all">🌟 All Months (Overall View)</option>
+                  {monthOptions.map((m) => (
+                    <option key={m} value={m}>
+                      📅 {m} {m === currentCalendarMonth ? '(Current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
 
 
           {/* Sub View Toggle Tabs */}

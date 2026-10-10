@@ -118,7 +118,6 @@ export async function POST(request: NextRequest) {
         payment_method: payment_method,
         receipt_number: receiptNumber,
         notes: notes || `Payment collected for ${existingPayment.payment_month}`,
-        collected_at: new Date().toISOString()
       })
       .eq('id', payment_id);
 

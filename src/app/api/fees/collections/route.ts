@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
 
     const db = supabaseAdmin;
 
-    // Build query for fee payment history with student details
-    let { data: allPayments, error } = await db
-      .from('fee_payment_history')
+    // Fetch all paid records directly from fee_payments
+    const { data: allPayments, error } = await db
+      .from('fee_payments')
       .select(`
         *,
         students (
@@ -64,34 +64,15 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      .order('collected_at', { ascending: false });
+      .eq('status', 'Paid')
+      .order('payment_date', { ascending: false });
 
-    // Fallback to fee_payments if fee_payment_history table is missing
     if (error) {
-      console.warn('fee_payment_history query warning, trying fee_payments:', error.message);
-      const fallbackResult = await db
-        .from('fee_payments')
-        .select(`
-          *,
-          students (
-            id,
-            name,
-            roll_number,
-            class_id,
-            classes (
-              id,
-              name
-            )
-          )
-        `)
-        .eq('status', 'Paid')
-        .order('created_at', { ascending: false });
-
-      allPayments = fallbackResult.data || [];
-      error = fallbackResult.error;
+      console.error('Error fetching paid collections:', error);
+      return NextResponse.json({ error: 'Failed to fetch collections' }, { status: 500 });
     }
 
-    console.log('Fetched payments count:', allPayments?.length || 0);
+    console.log('Fetched collections count:', allPayments?.length || 0);
     if (allPayments && allPayments.length > 0) {
       console.log('Sample payment:', {
         id: allPayments[0].id,
@@ -166,8 +147,9 @@ export async function GET(request: NextRequest) {
         if (startDate && endDate) {
           rangeStart = new Date(startDate);
           const rangeEnd = new Date(endDate);
+          rangeEnd.setHours(23, 59, 59, 999);
           filteredPayments = filteredPayments.filter((payment: FeePaymentHistory) => {
-            const paymentDate = new Date(payment.collected_at);
+            const paymentDate = getPaymentDate(payment);
             return paymentDate >= rangeStart && paymentDate <= rangeEnd;
           });
         }
@@ -181,53 +163,58 @@ export async function GET(request: NextRequest) {
     // Filter by time range (except for custom which is handled above)
     if (timeRange !== 'custom' && timeRange !== 'overall') {
       filteredPayments = filteredPayments.filter((payment: FeePaymentHistory) => {
-        const paymentDate = new Date(payment.collected_at);
+        const paymentDate = getPaymentDate(payment);
         return paymentDate >= rangeStart;
       });
     }
 
     // Calculate stats
-    const totalCollected = filteredPayments.reduce((sum: number, payment: FeePaymentHistory) => sum + Number(payment.paid_amount), 0);
+    const totalCollected = filteredPayments.reduce((sum: number, payment: FeePaymentHistory) => sum + Number(payment.paid_amount || payment.amount || 0), 0);
     const totalTransactions = filteredPayments.length;
     const averageAmount = totalTransactions > 0 ? totalCollected / totalTransactions : 0;
 
     // Calculate this month's collection
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonthPayments = (allPayments || []).filter((payment: FeePaymentHistory) => {
-      const paymentDate = new Date(payment.collected_at);
+      const paymentDate = getPaymentDate(payment);
       return paymentDate >= thisMonthStart;
     });
-    const thisMonthCollection = thisMonthPayments.reduce((sum: number, payment: FeePaymentHistory) => sum + Number(payment.paid_amount), 0);
+    const thisMonthCollection = thisMonthPayments.reduce((sum: number, payment: FeePaymentHistory) => sum + Number(payment.paid_amount || payment.amount || 0), 0);
 
     // Calculate payment method distribution
     const paymentMethodStats = {
-      cash: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Cash').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
-      upi: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'UPI').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
-      card: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Card').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
-      bank: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Bank Transfer').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
-      cheque: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Cheque').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
-      online: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Online').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount), 0),
+      cash: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Cash').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
+      upi: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'UPI').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
+      card: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Card').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
+      bank: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Bank Transfer').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
+      cheque: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Cheque').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
+      online: filteredPayments.filter((p: FeePaymentHistory) => p.payment_method === 'Online').reduce((sum: number, p: FeePaymentHistory) => sum + Number(p.paid_amount || p.amount || 0), 0),
     };
 
     // Format transactions for frontend
-    const transactions = filteredPayments.map((payment: FeePaymentHistory) => ({
-      id: payment.id,
-      studentName: payment.students?.name || 'Unknown Student',
-      rollNumber: payment.students?.roll_number || 'N/A',
-      class: payment.students?.classes?.name || 'N/A',
-      amount: Number(payment.amount),
-      paidAmount: Number(payment.paid_amount),
-      discount: Number(payment.discount || 0),
-      lateFee: Number(payment.late_fee || 0),
-      paymentMethod: payment.payment_method,
-      paymentDate: payment.payment_date,
-      collectedAt: payment.collected_at,
-      receiptNumber: payment.receipt_number,
-      paymentMonth: payment.payment_month,
-      notes: payment.notes,
-      collectedBy: 'Admin',
-      status: 'completed' as const
-    }));
+    const transactions = filteredPayments.map((payment: any) => {
+      const dateObj = getPaymentDate(payment);
+      const formattedDate = dateObj.toISOString().split('T')[0];
+
+      return {
+        id: payment.id,
+        studentName: payment.students?.name || 'Unknown Student',
+        rollNumber: payment.students?.roll_number || 'N/A',
+        class: payment.students?.classes?.name || 'N/A',
+        amount: Number(payment.amount),
+        paidAmount: Number(payment.paid_amount || payment.amount),
+        discount: Number(payment.discount || 0),
+        lateFee: Number(payment.late_fee || 0),
+        paymentMethod: payment.payment_method || 'Cash',
+        paymentDate: payment.payment_date || formattedDate,
+        collectedAt: payment.collected_at || payment.payment_date || payment.created_at || formattedDate,
+        receiptNumber: payment.receipt_number || `RCP-${payment.id.slice(0, 8)}`,
+        paymentMonth: payment.payment_month,
+        notes: payment.notes,
+        collectedBy: 'Admin',
+        status: 'completed' as const
+      };
+    });
 
     // Calculate chart data based on time range
     const chartData = calculateChartData(filteredPayments, timeRange, startDate, endDate);
@@ -256,6 +243,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper function to extract a reliable Date from a payment record
+function getPaymentDate(payment: any): Date {
+  const dateStr = payment.collected_at || payment.payment_date || payment.created_at;
+  if (!dateStr) return new Date();
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
 // Helper function to calculate chart data
 function calculateChartData(payments: FeePaymentHistory[], timeRange: string, startDate?: string | null, endDate?: string | null) {
   if (!payments || payments.length === 0) {
@@ -264,8 +259,8 @@ function calculateChartData(payments: FeePaymentHistory[], timeRange: string, st
 
   const dataPoints: { [key: string]: number } = {};
 
-  payments.forEach((payment: FeePaymentHistory) => {
-    const date = new Date(payment.collected_at);
+  payments.forEach((payment: any) => {
+    const date = getPaymentDate(payment);
     let key: string;
 
     switch (timeRange) {
@@ -299,7 +294,7 @@ function calculateChartData(payments: FeePaymentHistory[], timeRange: string, st
         key = date.toLocaleDateString();
     }
 
-    dataPoints[key] = (dataPoints[key] || 0) + Number(payment.paid_amount);
+    dataPoints[key] = (dataPoints[key] || 0) + Number(payment.paid_amount || payment.amount || 0);
   });
 
   return Object.entries(dataPoints).map(([label, amount]) => ({

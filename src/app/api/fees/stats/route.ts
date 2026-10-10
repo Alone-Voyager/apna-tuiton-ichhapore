@@ -38,17 +38,20 @@ export async function GET(request: NextRequest) {
     const currentDate = new Date();
     const currentMonth = currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-    // Allow overriding month AND date via query parameter for testing
+    // Allow overriding month AND date via query parameter
     const { searchParams } = new URL(request.url);
-    const testMonth = searchParams.get('month'); // e.g., "December 2025"
+    const testMonth = searchParams.get('month'); // e.g., "all", "July 2026", "October 2026"
     const testDate = searchParams.get('testDate'); // e.g., "2025-12-01" to simulate being in December
-    const filterMonth = testMonth || currentMonth;
+    
+    // Default to 'all' if not provided or explicitly 'all'
+    const isAllMonths = !testMonth || testMonth === 'all' || testMonth === 'All';
+    const filterMonth = isAllMonths ? 'all' : testMonth;
     
     // Use test date for status calculations if provided
     const today = testDate ? new Date(testDate) : new Date();
     today.setHours(0, 0, 0, 0);
 
-    console.log('Filtering by month:', filterMonth);
+    console.log('Filtering by month:', filterMonth, 'isAllMonths:', isAllMonths);
     console.log('Using date for status calculation:', today.toDateString());
 
     // Sync all active student fee payments up to today using the calendar logic
@@ -138,8 +141,7 @@ export async function GET(request: NextRequest) {
     console.log('Total students:', allStudents?.length, 'Active:', activeStudents.length, 'Suspended:', suspendedStudents.length);
     console.log('Suspended students:', suspendedStudents.map((s: any) => ({ id: s.id, name: s.name, class_id: (s as any).class_id })));
 
-    // Fetch fee payments for current month AND all overdue payments from any month
-    // This ensures we see all overdue fees, not just from the selected month
+    // Fetch ALL fee payments so students have their complete payment history
     const { data: feePayments, error: feeError } = await supabaseAdmin
       .from('fee_payments')
       .select(`
@@ -160,8 +162,7 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
-      .or(`payment_month.eq.${filterMonth},status.eq.Overdue`);
+      .order('payment_date', { ascending: false });
 
     if (feeError) {
       console.error('Error fetching fee payments:', feeError);
@@ -171,18 +172,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Debug logging for fee payments
     console.log('Fee payments fetched:', feePayments?.length);
-    const suspendedFeePayments = feePayments?.filter((fp: any) => {
-      return suspendedStudents.some((s: any) => s.id === fp.student_id);
-    }) || [];
-    
-    console.log('Suspended fee payments:', suspendedFeePayments.map((fp: any) => ({
-      id: fp.id,
-      student_id: fp.student_id,
-      status: fp.status,
-      payment_month: fp.payment_month
-    })));
 
     // Calculate active student status helper
     const isStudentActive = (s: any) => {
@@ -192,7 +182,7 @@ export async function GET(request: NextRequest) {
     };
 
     const studentsWithOverdueOrPaidInFilteredMonth = new Set([
-      ...(feePayments?.filter((fp: any) => fp.status === 'Overdue' || (fp.status === 'Paid' && fp.payment_month === filterMonth)).map((fp: any) => fp.student_id) || [])
+      ...(feePayments?.filter((fp: any) => fp.status === 'Overdue' || (fp.status === 'Paid' && (isAllMonths || fp.payment_month === filterMonth))).map((fp: any) => fp.student_id) || [])
     ]);
 
     const filteredStudents = allStudents?.filter((student: any) => {
@@ -206,20 +196,46 @@ export async function GET(request: NextRequest) {
     const validStudentIds = new Set(filteredStudents?.map((s: any) => s.id) || []);
     const validFeePayments = feePayments?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
 
-    const totalStudents = filteredStudents?.length || 0;
-    const paidCount = validFeePayments.filter((fp: any) => fp.status === 'Paid' && fp.payment_month === filterMonth).length;
-    const unpaidCount = validFeePayments.filter((fp: any) => (fp.status === 'Pending' || fp.status === 'Unpaid') && fp.payment_month === filterMonth).length;
-    const overdueCount = validFeePayments.filter((fp: any) => fp.status === 'Overdue').length;
-    const partialCount = validFeePayments.filter((fp: any) => fp.status === 'Partial').length;
+    // Extract all distinct available months from valid fee payments sorted descending
+    const availableMonths = Array.from(
+      new Set(validFeePayments.map((fp: any) => fp.payment_month).filter(Boolean))
+    ).sort((a: any, b: any) => {
+      const dateA = new Date(a + ' 1').getTime();
+      const dateB = new Date(b + ' 1').getTime();
+      return dateB - dateA;
+    });
 
-    const totalFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.amount || 0), 0);
-    const collectedFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.paid_amount || 0), 0);
+    const totalStudents = filteredStudents?.filter(isStudentActive).length || 0;
+
+    let paidCount = 0;
+    let unpaidCount = 0;
+    let overdueCount = 0;
+    let partialCount = 0;
+    let totalFees = 0;
+    let collectedFees = 0;
+
+    if (isAllMonths) {
+      paidCount = validFeePayments.filter((fp: any) => fp.status === 'Paid').length;
+      unpaidCount = validFeePayments.filter((fp: any) => fp.status === 'Pending' || fp.status === 'Unpaid').length;
+      overdueCount = validFeePayments.filter((fp: any) => fp.status === 'Overdue').length;
+      partialCount = validFeePayments.filter((fp: any) => fp.status === 'Partial').length;
+      totalFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.amount || 0), 0);
+      collectedFees = validFeePayments.reduce((sum: number, fp: any) => sum + Number(fp.paid_amount || 0), 0);
+    } else {
+      paidCount = validFeePayments.filter((fp: any) => fp.status === 'Paid' && fp.payment_month === filterMonth).length;
+      unpaidCount = validFeePayments.filter((fp: any) => (fp.status === 'Pending' || fp.status === 'Unpaid') && fp.payment_month === filterMonth).length;
+      overdueCount = validFeePayments.filter((fp: any) => fp.status === 'Overdue').length;
+      partialCount = validFeePayments.filter((fp: any) => fp.status === 'Partial' && fp.payment_month === filterMonth).length;
+      
+      const relevantPayments = validFeePayments.filter((fp: any) => fp.payment_month === filterMonth || fp.status === 'Overdue');
+      totalFees = relevantPayments.reduce((sum: number, fp: any) => sum + Number(fp.amount || 0), 0);
+      collectedFees = validFeePayments.filter((fp: any) => fp.payment_month === filterMonth).reduce((sum: number, fp: any) => sum + Number(fp.paid_amount || 0), 0);
+    }
 
     // Fetch all classes for organization to ensure empty classes appear correctly
     const { data: orgClasses } = await supabaseAdmin
       .from('classes')
-      .select('id, name')
-      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id);
+      .select('id, name');
 
     const classFeeMap = new Map<string, any>();
     
@@ -274,7 +290,7 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Process current fee payments (unpaid, pending, overdue) - ONLY for valid active/suspended students
+    // Process fee payments - ALWAYS attach to student's feePayments list, and calculate class stats
     validFeePayments.forEach((fp: any) => {
       const student = fp.students;
       const classData = student?.classes;
@@ -322,13 +338,39 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      classStats.totalFees += Number(fp.amount || 0);
-      classStats.collectedFees += Number(fp.paid_amount || 0);
-      
-      if (fp.status === 'Paid') classStats.paidCount++;
-      else if (fp.status === 'Pending' || fp.status === 'Unpaid') classStats.unpaidCount++;
-      else if (fp.status === 'Overdue') classStats.overdueCount++;
-      else if (fp.status === 'Partial') classStats.partialCount++;
+      // Calculate class level statistics based on month filter
+      if (isAllMonths) {
+        classStats.totalFees += Number(fp.amount || 0);
+        classStats.collectedFees += Number(fp.paid_amount || 0);
+        if (fp.status === 'Paid') classStats.paidCount++;
+        else if (fp.status === 'Pending' || fp.status === 'Unpaid') classStats.unpaidCount++;
+        else if (fp.status === 'Overdue') classStats.overdueCount++;
+        else if (fp.status === 'Partial') classStats.partialCount++;
+      } else {
+        if (fp.payment_month === filterMonth) {
+          classStats.collectedFees += Number(fp.paid_amount || 0);
+          if (fp.status === 'Paid') classStats.paidCount++;
+          else if (fp.status === 'Pending' || fp.status === 'Unpaid') classStats.unpaidCount++;
+          else if (fp.status === 'Partial') classStats.partialCount++;
+        }
+        if (fp.status === 'Overdue') {
+          classStats.overdueCount++;
+        }
+        if (fp.payment_month === filterMonth || fp.status === 'Overdue') {
+          classStats.totalFees += Number(fp.amount || 0);
+        }
+      }
+    });
+
+    // Sort each student's fee payments descending (latest first)
+    classFeeMap.forEach((classData) => {
+      classData.students.forEach((student: any) => {
+        student.feePayments.sort((a: any, b: any) => {
+          const dateA = new Date(a.paymentDate || a.dueDate || a.paymentMonth + ' 1').getTime();
+          const dateB = new Date(b.paymentDate || b.dueDate || b.paymentMonth + ' 1').getTime();
+          return dateB - dateA;
+        });
+      });
     });
 
     // Convert Map to array format
@@ -362,6 +404,7 @@ export async function GET(request: NextRequest) {
         collectedFees,
         expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
         currentMonth: filterMonth,
+        availableMonths,
       },
       classes: classesData,
     }, { status: 200 });

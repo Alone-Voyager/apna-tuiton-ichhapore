@@ -44,34 +44,33 @@ export function getCompletedBillingMonths(admissionDateStr: string, currentDate:
   const today = new Date(currentDate);
   today.setHours(0, 0, 0, 0);
 
-  const completedMonths: { monthName: string; dueDate: string }[] = [];
+  const billingMonths: { monthName: string; dueDate: string }[] = [];
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
 
-  let i = 1;
+  let i = 0;
   while (true) {
-    // The date on which the i-th billing cycle completes
-    const completionDate = addMonths(admissionDate, i);
-    completionDate.setHours(0, 0, 0, 0);
+    const cycleDate = addMonths(admissionDate, i);
+    cycleDate.setHours(0, 0, 0, 0);
 
-    // Only include cycles that have completed on or before today
-    if (completionDate > today) {
+    const cycleYear = cycleDate.getFullYear();
+    const cycleMonth = cycleDate.getMonth();
+
+    // Do not generate billing months beyond the current calendar month
+    if (cycleYear > todayYear || (cycleYear === todayYear && cycleMonth > todayMonth)) {
       break;
     }
 
-    // The month that became due is the one BEFORE the completion date:
-    // admissionDate + (i-1) months = the (i-1)th month after admission.
-    // For i=1 this is the admission month itself.
-    const dueMonthDate = addMonths(admissionDate, i - 1);
-    const monthName = dueMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    // Use the completion date as the due date (when the fee became payable)
-    const dueDateStr = completionDate.toISOString().split('T')[0];
+    const monthName = cycleDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const dueDateStr = cycleDate.toISOString().split('T')[0];
 
-    completedMonths.push({ monthName, dueDate: dueDateStr });
+    billingMonths.push({ monthName, dueDate: dueDateStr });
 
     i++;
     if (i > 1200) break; // safety: 100-year guard
   }
 
-  return completedMonths;
+  return billingMonths;
 }
 
 /**
@@ -145,6 +144,11 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
       }
 
       // Otherwise, generate a new unpaid record in fee_payments
+      const paymentMonthDate = new Date(billingMonth.monthName + ' 1');
+      const monthEnd = new Date(paymentMonthDate.getFullYear(), paymentMonthDate.getMonth() + 1, 0);
+      const isPastMonth = currentDate > monthEnd;
+      const initialStatus = isPastMonth ? 'Overdue' : 'Pending';
+
       const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
       entriesToInsert.push({
         student_id: studentId,
@@ -152,7 +156,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
         payment_month: billingMonth.monthName,
         payment_date: student.admission_date,
         due_date: billingMonth.dueDate,
-        status: 'Pending',
+        status: initialStatus,
         paid_amount: 0.00,
         discount: 0.00,
         late_fee: 0.00,
@@ -171,25 +175,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
       }
     }
 
-    // 5. Clean up any unpaid fee_payments records whose month name is NOT in the valid
-    //    completed billing months list. NEVER delete paid records.
-    const toDelete = existingPayments.filter((p: any) => {
-      if (p.status === 'Paid' || Number(p.paid_amount) > 0) return false;
-      const monthLower = p.payment_month?.toLowerCase();
-      if (paidMonthsNames.has(monthLower)) return false;
-      return !completedBillingMonthsNames.includes(monthLower);
-    });
-
-    if (toDelete.length > 0) {
-      const idsToDelete = toDelete.map((p: any) => p.id);
-      const { error: deleteError } = await supabase
-        .from('fee_payments')
-        .delete()
-        .in('id', idsToDelete);
-      if (deleteError) {
-        console.error('Error deleting invalid fee entries:', deleteError);
-      }
-    }
+    // Retain all existing fee records safely without deletion
   } catch (err) {
     console.error('Unexpected error in syncStudentFeePayments:', err);
   }
@@ -287,6 +273,11 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
         }
 
         // Otherwise, prepare a new unpaid record
+        const paymentMonthDate = new Date(billingMonth.monthName + ' 1');
+        const monthEnd = new Date(paymentMonthDate.getFullYear(), paymentMonthDate.getMonth() + 1, 0);
+        const isPastMonth = currentDate > monthEnd;
+        const initialStatus = isPastMonth ? 'Overdue' : 'Pending';
+
         const receiptNumber = `FEE-PENDING-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         entriesToInsert.push({
           student_id: studentId,
@@ -294,7 +285,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
           payment_month: billingMonth.monthName,
           payment_date: student.admission_date,
           due_date: billingMonth.dueDate,
-          status: 'Pending',
+          status: initialStatus,
           paid_amount: 0.00,
           discount: 0.00,
           late_fee: 0.00,
@@ -303,38 +294,15 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
           notes: `Fee entry created automatically for ${billingMonth.monthName}`
         });
       }
-
-      // Identify records in fee_payments that are NOT valid completed billing months
-      // Never delete paid records
-      const toDelete = studentUnpaidPayments.filter(p => {
-        if (p.status === 'Paid' || Number(p.paid_amount) > 0) return false;
-        const monthLower = p.payment_month?.toLowerCase();
-        if (studentPaidMonths.has(monthLower)) return false;
-        return !completedBillingMonthsNames.includes(monthLower);
-      });
-
-      for (const p of toDelete) {
-        idsToDelete.push(p.id);
-      }
     }
 
-    // 6. Perform bulk DB operations
+    // 6. Perform bulk insert for new fee entries (no records are ever deleted)
     if (entriesToInsert.length > 0) {
       const { error: insertError } = await supabase
         .from('fee_payments')
         .insert(entriesToInsert);
       if (insertError) {
         console.error('Error inserting bulk synced fee entries:', insertError);
-      }
-    }
-
-    if (idsToDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('fee_payments')
-        .delete()
-        .in('id', idsToDelete);
-      if (deleteError) {
-        console.error('Error deleting bulk invalid fee entries:', deleteError);
       }
     }
   } catch (err) {
