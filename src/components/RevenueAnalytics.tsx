@@ -32,13 +32,25 @@ interface AnalyticsData {
   collectionRate: number;
 }
 
+interface SummaryData {
+  totalStudents: number;
+  expectedRevenue: number;
+  revenueCollected: number;
+  outstandingRevenue: number;
+  collectionRate: number;
+  paidCount: number;
+  unpaidCount: number;
+  totalPayments: number;
+}
+
 interface RevenueAnalyticsProps {
   refreshTrigger?: number;
 }
 
 export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalyticsProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('overall');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
@@ -50,7 +62,7 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/fees/revenue-analytics');
+      const response = await fetch('/api/fees/revenue-analytics', { cache: 'no-store' });
       const data = await response.json();
       
       if (!response.ok) {
@@ -58,20 +70,21 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
       }
 
       const list: AnalyticsData[] = data.analytics || [];
-      setAnalytics(list);
+      const sum: SummaryData = data.summary || {
+        totalStudents: 0,
+        expectedRevenue: 0,
+        revenueCollected: 0,
+        outstandingRevenue: 0,
+        collectionRate: 0,
+        paidCount: 0,
+        unpaidCount: 0,
+        totalPayments: 0,
+      };
 
-      // Set default selected month to the current month or the latest month available
-      if (list.length > 0) {
-        const todayStr = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        const exists = list.some(item => item.month.toLowerCase() === todayStr.toLowerCase());
-        
-        if (exists) {
-          setSelectedMonth(todayStr);
-        } else {
-          // Fallback to the latest month in the dataset
-          setSelectedMonth(list[list.length - 1].month);
-        }
-      }
+      setAnalytics(list);
+      setSummary(sum);
+      // Default to overall view
+      setSelectedMonth('overall');
     } catch (err: any) {
       console.error('Error fetching analytics:', err);
       setError(err.message || 'An unexpected error occurred while loading analytics.');
@@ -80,19 +93,32 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
     }
   };
 
-  // Find stats for the currently selected month
-  const selectedStats = analytics.find(
-    item => item.month.toLowerCase() === selectedMonth.toLowerCase()
-  ) || {
-    month: selectedMonth || 'No Month Selected',
-    totalStudents: 0,
-    paidStudents: 0,
-    unpaidStudents: 0,
-    expectedRevenue: 0,
-    revenueCollected: 0,
-    outstandingRevenue: 0,
-    collectionRate: 0
-  };
+  // Find stats for currently selected view (Overall vs Specific Month)
+  const isOverall = selectedMonth === 'overall';
+
+  const selectedStats = isOverall && summary
+    ? {
+        month: 'All Months (Overall)',
+        totalStudents: summary.totalPayments || analytics.reduce((s, i) => s + i.totalStudents, 0),
+        paidStudents: summary.paidCount || analytics.reduce((s, i) => s + i.paidStudents, 0),
+        unpaidStudents: summary.unpaidCount || analytics.reduce((s, i) => s + i.unpaidStudents, 0),
+        expectedRevenue: summary.expectedRevenue || analytics.reduce((s, i) => s + i.expectedRevenue, 0),
+        revenueCollected: summary.revenueCollected || analytics.reduce((s, i) => s + i.revenueCollected, 0),
+        outstandingRevenue: summary.outstandingRevenue || analytics.reduce((s, i) => s + i.outstandingRevenue, 0),
+        collectionRate: summary.collectionRate,
+      }
+    : analytics.find(
+        item => item.month.toLowerCase() === selectedMonth.toLowerCase()
+      ) || {
+        month: selectedMonth || 'No Month Selected',
+        totalStudents: 0,
+        paidStudents: 0,
+        unpaidStudents: 0,
+        expectedRevenue: 0,
+        revenueCollected: 0,
+        outstandingRevenue: 0,
+        collectionRate: 0
+      };
 
   if (loading && analytics.length === 0) {
     return (
@@ -118,6 +144,9 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
     );
   }
 
+  // Reversed list of individual months for dropdown (newest month first)
+  const dropdownMonths = [...analytics].reverse();
+
   return (
     <div className="space-y-6">
       {/* Month Filter Selector */}
@@ -135,11 +164,12 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full sm:w-56 px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-slate-800 font-medium shadow-sm transition-all"
+            className="w-full sm:w-64 px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-slate-800 font-bold shadow-sm transition-all"
           >
-            {analytics.map((item) => (
+            <option value="overall">🌟 All Months (Overall View)</option>
+            {dropdownMonths.map((item) => (
               <option key={item.month} value={item.month}>
-                {item.month}
+                📅 {item.month}
               </option>
             ))}
           </select>
@@ -154,8 +184,10 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-blue-600/80 uppercase tracking-wider mb-1">Expected Revenue</p>
-              <p className="text-3xl font-black text-blue-700">₹{(selectedStats.expectedRevenue || 0).toLocaleString()}</p>
-              <p className="text-xs text-blue-600 mt-2 font-medium">Monthly Target for {selectedStats.month}</p>
+              <p className="text-3xl font-black text-blue-700">₹{(selectedStats.expectedRevenue || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-blue-600 mt-2 font-medium">
+                {isOverall ? 'Cumulative Target across All Months' : `Monthly Target for ${selectedStats.month}`}
+              </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full text-blue-700">
               <DollarSign className="w-6 h-6" />
@@ -169,8 +201,10 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-emerald-600/80 uppercase tracking-wider mb-1">Revenue Collected</p>
-              <p className="text-3xl font-black text-emerald-700">₹{(selectedStats.revenueCollected || 0).toLocaleString()}</p>
-              <p className="text-xs text-emerald-600 mt-2 font-medium">Collected for {selectedStats.month}</p>
+              <p className="text-3xl font-black text-emerald-700">₹{(selectedStats.revenueCollected || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-emerald-600 mt-2 font-medium">
+                {isOverall ? 'Total Collected across All Months' : `Collected for ${selectedStats.month}`}
+              </p>
             </div>
             <div className="bg-emerald-100 p-3 rounded-full text-emerald-700">
               <CheckCircle className="w-6 h-6" />
@@ -184,8 +218,10 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-xs font-bold text-rose-600/80 uppercase tracking-wider mb-1">Outstanding Revenue</p>
-              <p className="text-3xl font-black text-rose-700">₹{(selectedStats.outstandingRevenue || 0).toLocaleString()}</p>
-              <p className="text-xs text-rose-600 mt-2 font-medium">Remaining to collect</p>
+              <p className="text-3xl font-black text-rose-700">₹{(selectedStats.outstandingRevenue || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-rose-600 mt-2 font-medium">
+                {isOverall ? 'Total Pending across All Months' : 'Remaining to collect'}
+              </p>
             </div>
             <div className="bg-rose-100 p-3 rounded-full text-rose-700">
               <Clock className="w-6 h-6" />
@@ -200,7 +236,9 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
             <div>
               <p className="text-xs font-bold text-indigo-600/80 uppercase tracking-wider mb-1">Collection Rate</p>
               <p className="text-3xl font-black text-indigo-700">{selectedStats.collectionRate}%</p>
-              <p className="text-xs text-indigo-600 mt-2 font-medium">{selectedStats.paidStudents}/{selectedStats.totalStudents} Students Paid</p>
+              <p className="text-xs text-indigo-600 mt-2 font-medium">
+                {selectedStats.paidStudents}/{selectedStats.totalStudents} {isOverall ? 'Receipts Paid' : 'Students Paid'}
+              </p>
             </div>
             <div className="bg-indigo-100 p-3 rounded-full text-indigo-700">
               <TrendingUp className="w-6 h-6" />
@@ -211,9 +249,14 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
 
       {/* Chart Section */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="mb-6">
-          <h3 className="text-lg font-extrabold text-slate-800">Month-Wise Revenue Comparison Chart</h3>
-          <p className="text-slate-500 text-xs mt-0.5">Compare Expected Revenue vs Collected Revenue vs Outstanding Dues side-by-side chronologically.</p>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-800">Month-Wise Revenue Comparison Chart</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Compare Expected Revenue vs Collected Revenue vs Outstanding Dues side-by-side chronologically.</p>
+          </div>
+          <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-3 py-1 rounded-full self-start sm:self-auto">
+            {analytics.length} Billing Months
+          </span>
         </div>
 
         <div className="h-[350px] w-full">
@@ -235,13 +278,13 @@ export default function RevenueAnalytics({ refreshTrigger = 0 }: RevenueAnalytic
                   tickLine={false}
                 />
                 <YAxis 
-                  tickFormatter={(val) => `₹${val.toLocaleString()}`}
+                  tickFormatter={(val) => `₹${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`}
                   tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }}
                   axisLine={{ stroke: '#CBD5E1' }}
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: any) => [`₹${value.toLocaleString()}`, '']}
+                  formatter={(value: any) => [`₹${Number(value || 0).toLocaleString('en-IN')}`, '']}
                   contentStyle={{
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '12px',

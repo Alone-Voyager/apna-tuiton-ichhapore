@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/fees/revenue-analytics
@@ -12,60 +12,41 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const response = NextResponse.json({ success: true });
-    const supabase = createServerClient(
-      'https://cgbwcayquqpgbnyxnyzw.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYndjYXlxdXFwZ2JueXhueXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNTkzNTgsImV4cCI6MjA3NzYzNTM1OH0._KmePMak2LvDcnCe8M8_70NeZmyTfp7iw69gw6acoNg',
-      {
-        cookies: {
-          get(name: string) { return request.cookies.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) { response.cookies.set({ name, value, ...options }); },
-          remove(name: string, options: CookieOptions) { response.cookies.set({ name, value: '', ...options }); },
-        },
-      }
-    );
 
-    const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
-
-    // Fallback organization ID constant to guarantee dashboard always loads
-    let organizationId: string = 'default-org';
-
-    if (user?.id) {
-      try {
-        const { data: adminProfile } = await supabaseAdmin
-          .from('admin_profiles')
-          .select('*')
-      .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (adminProfile?.organization_id) {
-          organizationId = adminProfile.organization_id;
-        } else {
-          const { data: fallbackOrg } = await supabaseAdmin
-            .from('organizations')
-            .select('id')
-            .limit(1)
-            .maybeSingle();
-
-          if (fallbackOrg?.id) {
-            organizationId = fallbackOrg.id;
-          }
-        }
-      } catch (e) {
-        console.warn('[Revenue Analytics] Org lookup fallback triggered:', e);
-      }
-    }
-
-    // Sync student fee payments safely
+    // Sync student fee payments safely without organization_id filter
     try {
-      await syncAllStudentFeePayments(supabaseAdmin, organizationId);
+      await syncAllStudentFeePayments(supabaseAdmin);
     } catch (e) {
       console.warn('[Revenue Analytics] Fee sync skipped:', e);
     }
 
-    // Fetch all fee payments
-    const { data: allPaymentsData } = await supabaseAdmin
+    // 1. Fetch active students to get active count and target monthly fee
+    const { data: studentsData, error: studentsError } = await supabaseAdmin
+      .from('students')
+      .select('id, monthly_fee, status, is_active');
+
+    if (studentsError) {
+      console.error('Error fetching students for revenue analytics:', studentsError);
+    }
+
+    const isStudentActive = (s: any) => {
+      const isDeleted = s.status === 'inactive' || s.status === 'deleted' || s.status === 'archived' || s.status === 'suspended';
+      const isExplicitlyInactive = s.is_active === false;
+      return !isDeleted && !isExplicitlyInactive;
+    };
+
+    const activeStudents = (studentsData || []).filter(isStudentActive);
+    const totalActiveStudents = activeStudents.length;
+    const activeMonthlyTarget = activeStudents.reduce((sum, s) => sum + Number(s.monthly_fee || 0), 0);
+
+    // 2. Fetch all fee payments
+    const { data: allPaymentsData, error: paymentsError } = await supabaseAdmin
       .from('fee_payments')
       .select('payment_month, amount, paid_amount, status');
+
+    if (paymentsError) {
+      console.error('Error fetching fee payments for revenue analytics:', paymentsError);
+    }
 
     const allPayments = allPaymentsData || [];
 
@@ -88,7 +69,7 @@ export async function GET(request: NextRequest) {
           unpaidStudents: 0,
           expectedRevenue: 0,
           revenueCollected: 0,
-          outstandingRevenue: 0
+          outstandingRevenue: 0,
         });
       }
       return monthStatsMap.get(canonicalMonth)!;
@@ -112,6 +93,51 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Ensure the current month (e.g., October 2026) is always included
+    const currentMonthStr = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    if (!monthStatsMap.has(currentMonthStr)) {
+      monthStatsMap.set(currentMonthStr, {
+        totalStudents: totalActiveStudents,
+        paidStudents: 0,
+        unpaidStudents: totalActiveStudents,
+        expectedRevenue: Math.round(activeMonthlyTarget),
+        revenueCollected: 0,
+        outstandingRevenue: Math.round(activeMonthlyTarget),
+      });
+    }
+
+    // Calculate overall totals
+    let overallExpected = 0;
+    let overallCollected = 0;
+    let overallOutstanding = 0;
+    let overallPaidStudents = 0;
+    let overallUnpaidStudents = 0;
+    let overallTotalPayments = 0;
+
+    for (const stats of monthStatsMap.values()) {
+      overallExpected += stats.expectedRevenue;
+      overallCollected += stats.revenueCollected;
+      overallOutstanding += stats.outstandingRevenue;
+      overallPaidStudents += stats.paidStudents;
+      overallUnpaidStudents += stats.unpaidStudents;
+      overallTotalPayments += stats.totalStudents;
+    }
+
+    const overallCollectionRate = overallExpected > 0
+      ? Math.round((overallCollected / overallExpected) * 100)
+      : 0;
+
+    const summary = {
+      totalStudents: totalActiveStudents,
+      expectedRevenue: Math.round(overallExpected),
+      revenueCollected: Math.round(overallCollected),
+      outstandingRevenue: Math.round(overallOutstanding),
+      collectionRate: overallCollectionRate,
+      paidCount: overallPaidStudents,
+      unpaidCount: overallUnpaidStudents,
+      totalPayments: overallTotalPayments,
+    };
+
     const analytics = Array.from(monthStatsMap.entries()).map(([month, stats]) => {
       const collectionRate = stats.totalStudents > 0
         ? Math.round((stats.paidStudents / stats.totalStudents) * 100)
@@ -125,24 +151,11 @@ export async function GET(request: NextRequest) {
         expectedRevenue: Math.round(stats.expectedRevenue),
         revenueCollected: Math.round(stats.revenueCollected),
         outstandingRevenue: Math.round(stats.outstandingRevenue),
-        collectionRate
+        collectionRate,
       };
     });
 
-    if (analytics.length === 0) {
-      const currentMonthStr = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-      analytics.push({
-        month: currentMonthStr,
-        totalStudents: 0,
-        paidStudents: 0,
-        unpaidStudents: 0,
-        expectedRevenue: 0,
-        revenueCollected: 0,
-        outstandingRevenue: 0,
-        collectionRate: 0
-      });
-    }
-
+    // Chronological sorting (April 2026, May 2026, ..., October 2026)
     analytics.sort((a, b) => {
       const dateA = new Date(a.month + ' 1');
       const dateB = new Date(b.month + ' 1');
@@ -152,7 +165,8 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     return NextResponse.json({
       success: true,
-      analytics
+      analytics,
+      summary,
     }, { status: 200, headers: response.headers });
 
   } catch (error: any) {
@@ -168,8 +182,18 @@ export async function GET(request: NextRequest) {
         expectedRevenue: 0,
         revenueCollected: 0,
         outstandingRevenue: 0,
-        collectionRate: 0
-      }]
+        collectionRate: 0,
+      }],
+      summary: {
+        totalStudents: 0,
+        expectedRevenue: 0,
+        revenueCollected: 0,
+        outstandingRevenue: 0,
+        collectionRate: 0,
+        paidCount: 0,
+        unpaidCount: 0,
+        totalPayments: 0,
+      }
     }, { status: 200 });
   }
 }

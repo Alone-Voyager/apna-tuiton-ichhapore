@@ -16,45 +16,40 @@ export async function GET(request: NextRequest) {
 
     // Use supabaseAdmin for queries to bypass RLS
     const db = supabaseAdmin;
-    const useOrgFilter = organizationId && organizationId !== 'default-org';
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
 
-    // 1. Get total registered students count
-    let studentsQuery = db
+    // 1. Fetch all students to accurately determine active count and expected monthly revenue
+    const { data: allStudents, error: studentsError } = await db
       .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-    if (useOrgFilter) studentsQuery = studentsQuery.eq('organization_id', organizationId);
-    const { count: totalStudents, error: studentsError } = await studentsQuery;
+      .select('id, monthly_fee, status, is_active');
 
     if (studentsError) {
-      console.error('Error fetching students count:', studentsError);
+      console.error('Error fetching students:', studentsError);
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch students count', details: studentsError },
+        { success: false, error: 'Failed to fetch students data', details: studentsError },
         { status: 500 }
       );
     }
 
+    const isStudentActive = (s: any) => {
+      const isDeleted = s.status === 'inactive' || s.status === 'deleted' || s.status === 'archived' || s.status === 'suspended';
+      const isExplicitlyInactive = s.is_active === false;
+      return !isDeleted && !isExplicitlyInactive;
+    };
+
+    const activeStudents = allStudents?.filter(isStudentActive) || [];
+    const totalActiveStudents = activeStudents.length;
+
     // 2. Get today's attendance statistics
-    let attendanceQuery = db
+    const { data: todayAttendance, error: attendanceError } = await db
       .from('attendance')
       .select('status')
       .eq('attendance_date', today);
-    if (useOrgFilter) attendanceQuery = attendanceQuery.eq('organization_id', organizationId);
-    const { data: todayAttendance, error: attendanceError } = await attendanceQuery;
 
     if (attendanceError) {
-      console.error('Error fetching attendance:', attendanceError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch attendance', details: attendanceError },
-        { status: 500 }
-      );
+      console.warn('Attendance query warning (non-fatal):', attendanceError);
     }
 
-    // Calculate attendance statistics
-    // Total students (active) in the organization
-    const totalActiveStudents = totalStudents || 0;
-    
     // Count students present today (Present, Late, Half Day)
     const presentCount = todayAttendance?.filter(
       (record: any) => record.status === 'Present' || record.status === 'Late' || record.status === 'Half Day'
@@ -66,78 +61,53 @@ export async function GET(request: NextRequest) {
       : 0;
 
     // 3. Get students on leave today
-    let leaveQuery = db
-      .from('attendance')
-      .select('*', { count: 'exact', head: true })
-      .eq('attendance_date', today)
-      .eq('status', 'Leave');
-    if (useOrgFilter) leaveQuery = leaveQuery.eq('organization_id', organizationId);
-    const { count: onLeaveCount, error: leaveError } = await leaveQuery;
+    const onLeaveCount = todayAttendance?.filter(
+      (record: any) => record.status === 'Leave'
+    ).length || 0;
 
-    if (leaveError) {
-      console.error('Error fetching leave count:', leaveError);
-    }
-
-    // Sync all active student fee payments first
+    // Sync all active student fee payments safely
     try {
-      await syncAllStudentFeePayments(db, useOrgFilter ? organizationId : undefined);
+      await syncAllStudentFeePayments(db);
     } catch (syncErr) {
       console.warn('Fee sync skipped:', syncErr);
     }
 
     // 4. Get total outstanding amount (Unpaid, Pending, Overdue, Partial)
-    let outstandingQuery = db
+    const { data: outstandingPayments, error: outstandingError } = await db
       .from('fee_payments')
       .select('amount, paid_amount')
       .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial']);
-    if (useOrgFilter) outstandingQuery = outstandingQuery.eq('organization_id', organizationId);
-    const { data: outstandingPayments, error: outstandingError } = await outstandingQuery;
 
     if (outstandingError) {
       console.error('Error fetching outstanding payments:', outstandingError);
     }
 
-    // Calculate total outstanding: amount - paid_amount for each record
+    // Calculate total outstanding: amount - paid_amount for each unpaid record
     const totalOutstanding = outstandingPayments?.reduce(
-      (sum: number, payment: any) => sum + (Number(payment.amount || 0) - Number(payment.paid_amount || 0)),
+      (sum: number, payment: any) => sum + Math.max(0, Number(payment.amount || 0) - Number(payment.paid_amount || 0)),
       0
     ) || 0;
 
     // 5. Calculate Expected Monthly Revenue (Sum of monthly_fee for all active students)
-    let revenueQuery = db
-      .from('students')
-      .select('monthly_fee, status, is_active');
-    if (useOrgFilter) revenueQuery = revenueQuery.eq('organization_id', organizationId);
-    const { data: activeStudents, error: expectedRevenueErr } = await revenueQuery;
+    const expectedMonthlyRevenue = activeStudents.reduce((sum: number, student: any) => {
+      return sum + Number(student.monthly_fee || 0);
+    }, 0);
 
-    if (expectedRevenueErr) {
-      console.error('Error fetching active students for expected revenue:', expectedRevenueErr);
-    }
-
-    const isStudentActive = (s: any) => {
-      const isDeleted = s.status === 'inactive' || s.status === 'deleted' || s.status === 'archived' || s.status === 'suspended';
-      const isExplicitlyInactive = s.is_active === false;
-      return !isDeleted && !isExplicitlyInactive;
+    const statsData = {
+      totalStudents: totalActiveStudents,
+      total_students: totalActiveStudents,
+      attendancePercentage,
+      presentCount,
+      totalAttendanceRecords: totalActiveStudents,
+      onLeaveCount,
+      totalOutstanding: Math.round(totalOutstanding),
+      expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
     };
-
-    const expectedMonthlyRevenue = activeStudents?.reduce((sum: number, student: any) => {
-      if (isStudentActive(student)) {
-        return sum + Number(student.monthly_fee || 0);
-      }
-      return sum;
-    }, 0) || 0;
 
     return NextResponse.json({
       success: true,
-      data: {
-        totalStudents: totalStudents || 0,
-        attendancePercentage,
-        presentCount,
-        totalAttendanceRecords: totalActiveStudents, // Total active students
-        onLeaveCount: onLeaveCount || 0,
-        totalOutstanding: Math.round(totalOutstanding),
-        expectedMonthlyRevenue: Math.round(expectedMonthlyRevenue),
-      },
+      data: statsData,
+      stats: statsData,
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);

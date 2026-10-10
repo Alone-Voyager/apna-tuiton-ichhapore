@@ -40,8 +40,8 @@ export default function Analytics() {
       }
 
       const [statsRes, feeRes] = await Promise.allSettled([
-        fetch(`/api/dashboard/stats?${params}`),
-        fetch(`/api/fees/stats?${params}`),
+        fetch(`/api/dashboard/stats?${params}`, { cache: 'no-store' }),
+        fetch(`/api/fees/stats?${params}`, { cache: 'no-store' }),
       ]);
 
       let stats: any = {};
@@ -49,15 +49,16 @@ export default function Analytics() {
 
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const d = await statsRes.value.json();
-        stats = d.stats || d;
+        stats = d.data || d.stats || d;
       }
       if (feeRes.status === 'fulfilled' && feeRes.value.ok) {
-        feeStats = await feeRes.value.json();
+        const f = await feeRes.value.json();
+        feeStats = f.stats || f;
       }
 
-      const collected = feeStats.totalCollected || feeStats.collected_amount || 0;
-      const expected = feeStats.totalExpected || feeStats.expected_amount || 0;
-      const pending = feeStats.totalPending || feeStats.pending_amount || (expected - collected) || 0;
+      const collected = Number(feeStats.collectedFees ?? feeStats.totalCollected ?? feeStats.collected_amount ?? 0);
+      const expected = Number(feeStats.totalFees ?? feeStats.totalExpected ?? feeStats.expectedMonthlyRevenue ?? stats.expectedMonthlyRevenue ?? 0);
+      const pending = Number(stats.totalOutstanding ?? feeStats.totalPending ?? feeStats.pending_amount ?? Math.max(0, expected - collected));
 
       setCurrentData({
         totalStudents: stats.totalStudents || stats.total_students || 0,
@@ -191,7 +192,7 @@ export default function Analytics() {
                       <span>+8.2%</span>
                     </div>
                   </div>
-                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{(currentData.totalRevenue / 1000).toFixed(0)}K</div>
+                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{currentData.totalRevenue.toLocaleString('en-IN')}</div>
                   <div className="text-xs lg:text-sm text-white/80">Total Revenue</div>
                 </div>
 
@@ -203,7 +204,7 @@ export default function Analytics() {
                       <span>+5.4%</span>
                     </div>
                   </div>
-                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{(currentData.collectedFees / 1000).toFixed(0)}K</div>
+                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{currentData.collectedFees.toLocaleString('en-IN')}</div>
                   <div className="text-xs lg:text-sm text-white/80">Collected Fees</div>
                 </div>
 
@@ -214,7 +215,7 @@ export default function Analytics() {
                       <span>Target</span>
                     </div>
                   </div>
-                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{(currentData.expectedFees / 1000).toFixed(0)}K</div>
+                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{currentData.expectedFees.toLocaleString('en-IN')}</div>
                   <div className="text-xs lg:text-sm text-white/80">Expected Fees</div>
                 </div>
 
@@ -226,7 +227,7 @@ export default function Analytics() {
                       <span>-2.1%</span>
                     </div>
                   </div>
-                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{(currentData.pendingFees / 1000).toFixed(0)}K</div>
+                  <div className="text-xl lg:text-2xl font-bold mb-1">₹{currentData.pendingFees.toLocaleString('en-IN')}</div>
                   <div className="text-xs lg:text-sm text-white/80">Pending Fees</div>
                 </div>
 
@@ -282,11 +283,11 @@ export default function Analytics() {
                       <p className="text-sm text-slate-500 mt-2">Monthly revenue and collection trends</p>
                       <div className="mt-4 flex justify-center space-x-6">
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-blue-600">₹{(currentData.totalRevenue / 1000).toFixed(0)}K</p>
+                          <p className="text-2xl font-bold text-blue-600">₹{currentData.totalRevenue.toLocaleString('en-IN')}</p>
                           <p className="text-xs text-slate-500">Current Period</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-green-600">87.4%</p>
+                          <p className="text-2xl font-bold text-green-600">{currentData.collectionRate}%</p>
                           <p className="text-xs text-slate-500">Collection Rate</p>
                         </div>
                       </div>
