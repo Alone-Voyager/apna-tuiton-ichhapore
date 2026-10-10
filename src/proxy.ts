@@ -10,6 +10,14 @@ export async function proxy(request: NextRequest) {
     },
   });
 
+  const refreshResponse = () => {
+    const nextResponse = NextResponse.next({ request: { headers: request.headers } });
+    response.cookies.getAll().forEach((cookie) => {
+      nextResponse.cookies.set(cookie);
+    });
+    response = nextResponse;
+  };
+
   const supabase = createServerClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
@@ -20,12 +28,12 @@ export async function proxy(request: NextRequest) {
         },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
+          refreshResponse();
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
+          refreshResponse();
           response.cookies.set({ name, value: '', ...options });
         },
       },
