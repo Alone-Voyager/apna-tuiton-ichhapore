@@ -118,7 +118,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
     }
 
     const duplicateIdsToDelete: string[] = [];
-    for (const [, records] of monthGroups.entries()) {
+    monthGroups.forEach((records) => {
       if (records.length > 1) {
         const paidRecords = records.filter((r: any) => r.status === 'Paid' || Number(r.paid_amount) > 0);
         if (paidRecords.length > 0) {
@@ -134,7 +134,7 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
           }
         }
       }
-    }
+    });
 
     if (duplicateIdsToDelete.length > 0) {
       await supabase
