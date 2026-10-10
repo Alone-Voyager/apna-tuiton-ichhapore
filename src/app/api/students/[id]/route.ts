@@ -438,13 +438,13 @@ export async function PATCH(
       .from('students')
       .update(updates)
       .eq('id', studentId)
-      .select('*, user_id')
+      .select('*')
       .single();
 
     if (updateError) {
       console.error('Error updating student:', updateError);
       return NextResponse.json(
-        { error: 'Failed to update student details' },
+        { error: 'Failed to update student details', details: updateError.message },
         { status: 500 }
       );
     }
@@ -456,46 +456,21 @@ export async function PATCH(
       console.warn('Fee sync after student edit warning:', syncErr);
     }
 
-    // Handle credentials update if password or roll_number (username) changed
-    if (updatedStudent.user_id && (student_password || roll_number)) {
-      const userUpdates: any = {};
-      
-      if (roll_number) {
-        userUpdates.username = roll_number;
-      }
-      
-      if (student_password) {
-        userUpdates.password_hash = await bcrypt.hash(student_password, 10);
-      }
-
-      const { error: userUpdateError } = await supabaseAdmin
-        .from('users')
-        .update(userUpdates)
-        .eq('id', updatedStudent.user_id);
-
-      if (userUpdateError) {
-        console.error('Error updating user credentials:', userUpdateError);
-      }
-      
-      // Also update Supabase Auth if possible
-      if (student_password) {
-        const studentEmail = `${(roll_number || updatedStudent.roll_number).toLowerCase()}@apnatuition.local`;
-        try {
-          const { data: profile } = await supabaseAdmin
-            .from('student_profiles')
-            .select('user_id')
-            .eq('student_id', studentId)
-            .single();
-            
-          if (profile?.user_id) {
-            await supabaseAdmin.auth.admin.updateUserById(profile.user_id, {
-              password: student_password,
-              email: studentEmail
-            });
-          }
-        } catch (authErr) {
-          console.error('Error updating auth user:', authErr);
+    // Handle credentials update if password changed
+    if (student_password) {
+      const studentEmail = `${(roll_number || updatedStudent.roll_number).toLowerCase()}@apnatuition.local`;
+      try {
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = (listData?.users || []).find(
+          (u: any) => u.email?.toLowerCase() === studentEmail.toLowerCase()
+        );
+        if (authUser?.id) {
+          await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+            password: student_password
+          });
         }
+      } catch (authErr) {
+        console.warn('Auth password update notice:', authErr);
       }
     }
 
