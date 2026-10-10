@@ -194,7 +194,25 @@ export async function GET(request: NextRequest) {
     });
 
     const validStudentIds = new Set(filteredStudents?.map((s: any) => s.id) || []);
-    const validFeePayments = feePayments?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
+    const rawValidPayments = feePayments?.filter((fp: any) => validStudentIds.has(fp.student_id)) || [];
+    const validMap = new Map<string, any>();
+    for (const fp of rawValidPayments) {
+      const sId = fp.student_id;
+      const m = (fp.payment_month || '').trim().toLowerCase();
+      if (!sId || !m) continue;
+      const key = `${sId}___${m}`;
+      const existing = validMap.get(key);
+      if (!existing) {
+        validMap.set(key, fp);
+      } else {
+        const existingPaid = Number(existing.paid_amount || 0);
+        const currentPaid = Number(fp.paid_amount || 0);
+        if (currentPaid > existingPaid || (fp.status === 'Paid' && existing.status !== 'Paid')) {
+          validMap.set(key, fp);
+        }
+      }
+    }
+    const validFeePayments = Array.from(validMap.values());
 
     // Extract all distinct available months from valid fee payments sorted descending
     const availableMonths = Array.from(

@@ -83,19 +83,21 @@ export async function GET(request: NextRequest) {
         // Group payment months by student
         const paymentsByStudent = paidPayments.reduce((acc: any, payment: any) => {
           if (!acc[payment.student_id]) {
-            acc[payment.student_id] = [];
+            acc[payment.student_id] = new Set<string>();
           }
-          acc[payment.student_id].push(payment.payment_month);
+          if (payment.payment_month) {
+            acc[payment.student_id].add(payment.payment_month);
+          }
           return acc;
         }, {});
 
         // Filter students who have at least one paid payment and add payment months
         enrichedStudents = enrichedStudents
-          .filter((student: any) => paymentsByStudent[student.id])
+          .filter((student: any) => paymentsByStudent[student.id]?.size > 0)
           .map((student: any) => ({
             ...student,
             fee_status: 'paid' as const,
-            payment_months: paymentsByStudent[student.id] || []
+            payment_months: Array.from(paymentsByStudent[student.id] || [])
           }));
       }
     } else if (feeStatus === 'overdue') {
@@ -111,19 +113,21 @@ export async function GET(request: NextRequest) {
         // Group overdue months by student
         const overdueByStudent = overduePayments.reduce((acc: any, payment: any) => {
           if (!acc[payment.student_id]) {
-            acc[payment.student_id] = [];
+            acc[payment.student_id] = new Set<string>();
           }
-          acc[payment.student_id].push(payment.payment_month);
+          if (payment.payment_month) {
+            acc[payment.student_id].add(payment.payment_month);
+          }
           return acc;
         }, {});
 
         // Filter students who have at least one overdue payment and add overdue months
         enrichedStudents = enrichedStudents
-          .filter((student: any) => overdueByStudent[student.id])
+          .filter((student: any) => overdueByStudent[student.id]?.size > 0)
           .map((student: any) => ({
             ...student,
             fee_status: 'overdue' as const,
-            overdue_months: overdueByStudent[student.id] || []
+            overdue_months: Array.from(overdueByStudent[student.id] || [])
           }));
       }
     }

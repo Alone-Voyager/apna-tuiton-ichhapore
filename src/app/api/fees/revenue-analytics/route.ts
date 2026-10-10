@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
+import { fetchAllRows } from '../../../../lib/fees-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -30,16 +31,33 @@ export async function GET(request: NextRequest) {
     const totalActiveStudents = activeStudents.length;
     const activeMonthlyTarget = activeStudents.reduce((sum, s) => sum + Number(s.monthly_fee || 0), 0);
 
-    // 2. Fetch all fee payments
-    const { data: allPaymentsData, error: paymentsError } = await supabaseAdmin
-      .from('fee_payments')
-      .select('payment_month, amount, paid_amount, status');
+    // 2. Fetch all fee payments across all records using pagination
+    const allPaymentsRaw = await fetchAllRows(
+      supabaseAdmin,
+      'fee_payments',
+      'student_id, payment_month, amount, paid_amount, status'
+    );
 
-    if (paymentsError) {
-      console.error('Error fetching fee payments for revenue analytics:', paymentsError);
+    // Deduplicate by student and month (prioritizing Paid entries)
+    const paymentMap = new Map<string, any>();
+    for (const p of allPaymentsRaw) {
+      const sId = p.student_id;
+      const m = (p.payment_month || '').trim().toLowerCase();
+      if (!sId || !m) continue;
+      const key = `${sId}___${m}`;
+      const existing = paymentMap.get(key);
+      if (!existing) {
+        paymentMap.set(key, p);
+      } else {
+        const existingPaid = Number(existing.paid_amount || 0);
+        const currentPaid = Number(p.paid_amount || 0);
+        if (currentPaid > existingPaid || (p.status === 'Paid' && existing.status !== 'Paid')) {
+          paymentMap.set(key, p);
+        }
+      }
     }
 
-    const allPayments = allPaymentsData || [];
+    const allPayments = Array.from(paymentMap.values());
 
     // Compile metrics grouped by billing month
     const monthStatsMap = new Map<string, {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestOrgContext } from '../../../../lib/supabase/server';
-import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
+import { syncAllStudentFeePayments, fetchAllRows } from '../../../../lib/fees-service';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
 
 export async function GET(request: NextRequest) {
@@ -73,19 +73,27 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Get total outstanding amount (Unpaid, Pending, Overdue, Partial)
-    // Fetch ALL fee payments that are not fully paid to compute the real outstanding balance
-    const { data: outstandingPayments, error: outstandingError } = await db
-      .from('fee_payments')
-      .select('amount, paid_amount, status')
-      .in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial']);
+    // Fetch ALL non-paid fee payments using pagination to bypass PostgREST limit
+    const rawOutstanding = await fetchAllRows(
+      db,
+      'fee_payments',
+      'student_id, payment_month, amount, paid_amount, status',
+      (q) => q.in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
+    );
 
-    if (outstandingError) {
-      console.error('Error fetching outstanding payments:', outstandingError);
+    // Deduplicate by student and month so duplicate rows can never inflate outstanding balance
+    const outstandingMap = new Map<string, any>();
+    for (const p of rawOutstanding) {
+      const sId = p.student_id;
+      const m = (p.payment_month || '').trim().toLowerCase();
+      if (!sId || !m) continue;
+      const key = `${sId}___${m}`;
+      if (!outstandingMap.has(key)) {
+        outstandingMap.set(key, p);
+      }
     }
 
-    // Outstanding = (amount - paid_amount) for every non-Paid record, including Partial
-    // This correctly captures both fully-unpaid and partially-paid dues
-    const totalOutstanding = (outstandingPayments || []).reduce(
+    const totalOutstanding = Array.from(outstandingMap.values()).reduce(
       (sum: number, payment: any) => {
         const due = Math.max(0, Number(payment.amount || 0) - Number(payment.paid_amount || 0));
         return sum + due;

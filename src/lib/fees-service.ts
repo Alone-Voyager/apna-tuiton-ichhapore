@@ -224,6 +224,42 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
 }
 
 /**
+ * Helper to fetch all rows from a Supabase table overcoming the PostgREST 1000 max_rows limit.
+ */
+export async function fetchAllRows(
+  supabase: any,
+  table: string,
+  select: string = '*',
+  applyQuery?: (query: any) => any
+): Promise<any[]> {
+  const allRows: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  while (true) {
+    let query = supabase
+      .from(table)
+      .select(select)
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (applyQuery) {
+      query = applyQuery(query);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error(`Error in fetchAllRows for ${table}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    allRows.push(...data);
+    if (data.length < pageSize) break;
+    page++;
+    if (page > 100) break; // safety guard
+  }
+  return allRows;
+}
+
+/**
  * Synchronizes fee payments for ALL active students in an organization.
  * Used for organization-wide stats synchronization and bulk fee generation.
  */
@@ -240,27 +276,63 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       return;
     }
 
-    // 2. Fetch all fee payments with high limit (default REST limit is 1000)
-    let unpaidQuery = supabase
-      .from('fee_payments')
-      .select('id, student_id, payment_month, status, paid_amount, amount')
-      .limit(50000);
-    const { data: allUnpaid, error: unpaidError } = await unpaidQuery;
+    // 2. Fetch ALL fee payments across the database using pagination
+    const allPayments = await fetchAllRows(
+      supabase,
+      'fee_payments',
+      'id, student_id, payment_month, status, paid_amount, amount'
+    );
 
-    if (unpaidError) {
-      console.error('Error fetching unpaid payments for sync:', unpaidError);
-      return;
+    // 3. CLEAN UP DUPLICATES: Identify and remove duplicate unpaid entries across all students
+    const studentMonthMap = new Map<string, any[]>();
+    for (const p of allPayments) {
+      const sId = p.student_id;
+      const m = p.payment_month?.trim().toLowerCase();
+      if (!sId || !m) continue;
+      const key = `${sId}___${m}`;
+      if (!studentMonthMap.has(key)) {
+        studentMonthMap.set(key, []);
+      }
+      studentMonthMap.get(key)!.push(p);
     }
 
-    // 3. Group payments by student_id into paid and unpaid
+    const duplicateIdsToDelete: string[] = [];
+    studentMonthMap.forEach((records) => {
+      if (records.length > 1) {
+        const paidRecords = records.filter((r: any) => r.status === 'Paid' || Number(r.paid_amount) > 0);
+        if (paidRecords.length > 0) {
+          // If a paid record exists, delete all unpaid duplicates
+          const unpaid = records.filter((r: any) => r.status !== 'Paid' && Number(r.paid_amount || 0) === 0);
+          for (const u of unpaid) {
+            duplicateIdsToDelete.push(u.id);
+          }
+        } else {
+          // Keep the first record, delete remaining unpaid duplicates
+          for (let k = 1; k < records.length; k++) {
+            duplicateIdsToDelete.push(records[k].id);
+          }
+        }
+      }
+    });
+
+    if (duplicateIdsToDelete.length > 0) {
+      const batchSize = 100;
+      for (let i = 0; i < duplicateIdsToDelete.length; i += batchSize) {
+        const batch = duplicateIdsToDelete.slice(i, i + batchSize);
+        await supabase.from('fee_payments').delete().in('id', batch);
+      }
+    }
+
+    const survivingPayments = allPayments.filter((p: any) => !duplicateIdsToDelete.includes(p.id));
+
+    // 4. Group surviving payments by student_id
     const unpaidByStudent = new Map<string, any[]>();
     const paidByStudent = new Map<string, Set<string>>();
 
-    for (const payment of allUnpaid || []) {
+    for (const payment of survivingPayments) {
       const sId = payment.student_id;
-      if (!sId) continue;
       const pMonth = payment.payment_month?.trim().toLowerCase();
-      if (!pMonth) continue;
+      if (!sId || !pMonth) continue;
 
       if (payment.status === 'Paid' || Number(payment.paid_amount) > 0) {
         if (!paidByStudent.has(sId)) {
@@ -278,7 +350,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
     const entriesToInsert: any[] = [];
     const insertedKeys = new Set<string>();
 
-    // 4. For each student, check what needs to be synced
+    // 5. For each student, check what needs to be synced
     for (const student of students) {
       if (!student.admission_date) {
         continue;
@@ -300,7 +372,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
         const monthLower = billingMonth.monthName.trim().toLowerCase();
         const key = `${studentId}_${monthLower}`;
 
-        // If paid, skip
+        // If paid or already being inserted, skip
         if (studentPaidMonths.has(monthLower) || insertedKeys.has(key)) {
           continue;
         }
@@ -342,13 +414,17 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       }
     }
 
-    // 5. Perform bulk insert for new fee entries
+    // 6. Perform bulk insert for new fee entries in batches
     if (entriesToInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('fee_payments')
-        .insert(entriesToInsert);
-      if (insertError) {
-        console.error('Error inserting bulk synced fee entries:', insertError);
+      const batchSize = 100;
+      for (let i = 0; i < entriesToInsert.length; i += batchSize) {
+        const batch = entriesToInsert.slice(i, i + batchSize);
+        const { error: insertError } = await supabase
+          .from('fee_payments')
+          .insert(batch);
+        if (insertError) {
+          console.error('Error inserting bulk synced fee entries batch:', insertError);
+        }
       }
     }
   } catch (err) {

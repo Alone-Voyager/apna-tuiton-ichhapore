@@ -166,8 +166,9 @@ export async function GET(request: NextRequest) {
 
       if (studentPendingMap.has(student.id)) {
         const existing = studentPendingMap.get(student.id)!;
-        existing.totalPendingFees += pending;
-        if (!existing.pendingMonthsList.some(m => m.monthName.toLowerCase() === monthName.toLowerCase())) {
+        const monthExists = existing.pendingMonthsList.some(m => m.monthName.toLowerCase() === monthName.toLowerCase());
+        if (!monthExists) {
+          existing.totalPendingFees += pending;
           existing.pendingMonthsList.push({ monthName, dueDateStr, pendingAmount: pending });
         }
       } else {
