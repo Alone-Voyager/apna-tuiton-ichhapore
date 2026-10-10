@@ -51,17 +51,37 @@ export async function GET(
       .eq('student_id', id)
       .eq('status', 'Paid');
 
-    // Calculate fee statistics
-    const allPayments = allFeePayments || [];
-    const pendingPayments = allPayments.filter((p: any) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status));
-    
-    const totalPaid = paidPayments?.reduce(
-      (sum: number, p: any) => sum + Number(p.paid_amount || 0),
-      0
-    ) || 0;
+    // Deduplicate payments by month to prevent duplicate rows in response
+    const monthMap = new Map<string, any>();
+    for (const p of (allFeePayments || [])) {
+      const mKey = (p.payment_month || '').trim().toLowerCase();
+      if (!mKey) continue;
+      const existing = monthMap.get(mKey);
+      if (!existing) {
+        monthMap.set(mKey, p);
+      } else {
+        const existingPaid = Number(existing.paid_amount || 0);
+        const currentPaid = Number(p.paid_amount || 0);
+        if (currentPaid > existingPaid || (p.status === 'Paid' && existing.status !== 'Paid')) {
+          monthMap.set(mKey, p);
+        }
+      }
+    }
+
+    const deduplicatedPayments = Array.from(monthMap.values());
+    const pendingPayments = deduplicatedPayments.filter((p: any) =>
+      ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status)
+    );
+
+    const totalPaid = deduplicatedPayments
+      .filter((p: any) => p.status === 'Paid' || Number(p.paid_amount || 0) > 0)
+      .reduce((sum: number, p: any) => sum + Number(p.paid_amount || 0), 0);
 
     const totalPendingMonths = pendingPayments.length;
-    const pendingAmount = pendingPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
+    const pendingAmount = pendingPayments.reduce(
+      (sum: number, p: any) => sum + Math.max(0, Number(p.amount || 0) - Number(p.paid_amount || 0)),
+      0
+    );
     const pendingMonths = pendingPayments.map((p: any) => p.payment_month);
 
     const res = NextResponse.json({
@@ -71,7 +91,7 @@ export async function GET(
         totalPendingMonths,
         pendingAmount,
         pendingMonths,
-        fee_payments: allPayments,
+        fee_payments: deduplicatedPayments,
         paymentHistory: paidPayments || []
       }
     });

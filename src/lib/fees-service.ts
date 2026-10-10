@@ -94,13 +94,13 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
 
     // 2. Get all completed billing months based on calendar logic
     const completedBillingMonths = getCompletedBillingMonths(student.admission_date, currentDate);
-    const completedBillingMonthsNames = completedBillingMonths.map(m => m.monthName.toLowerCase());
 
     // 3. Fetch existing payments from fee_payments
     const { data: existingPaymentsData, error: paymentsError } = await supabase
       .from('fee_payments')
       .select('*')
-      .eq('student_id', studentId);
+      .eq('student_id', studentId)
+      .limit(10000);
 
     if (paymentsError) {
       console.error('Error fetching existing fee payments:', paymentsError);
@@ -108,25 +108,64 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
 
     const existingPayments = existingPaymentsData || [];
 
+    // Clean up duplicate records if any exist in the database for this student
+    const monthGroups = new Map<string, any[]>();
+    for (const p of existingPayments) {
+      const m = p.payment_month?.trim().toLowerCase();
+      if (!m) continue;
+      if (!monthGroups.has(m)) monthGroups.set(m, []);
+      monthGroups.get(m)!.push(p);
+    }
+
+    const duplicateIdsToDelete: string[] = [];
+    for (const [, records] of monthGroups.entries()) {
+      if (records.length > 1) {
+        const paidRecords = records.filter((r: any) => r.status === 'Paid' || Number(r.paid_amount) > 0);
+        if (paidRecords.length > 0) {
+          // If there is already a paid record, delete all unpaid duplicates
+          const unpaidRecords = records.filter((r: any) => r.status !== 'Paid' && Number(r.paid_amount || 0) === 0);
+          for (const u of unpaidRecords) {
+            duplicateIdsToDelete.push(u.id);
+          }
+        } else {
+          // Keep the first unpaid record and delete redundant unpaid duplicates
+          for (let k = 1; k < records.length; k++) {
+            duplicateIdsToDelete.push(records[k].id);
+          }
+        }
+      }
+    }
+
+    if (duplicateIdsToDelete.length > 0) {
+      await supabase
+        .from('fee_payments')
+        .delete()
+        .in('id', duplicateIdsToDelete);
+    }
+
+    // Filter surviving payments
+    const survivingPayments = existingPayments.filter((p: any) => !duplicateIdsToDelete.includes(p.id));
+
     const paidMonthsNames = new Set(
-      existingPayments
+      survivingPayments
         .filter((p: any) => p.status === 'Paid' || Number(p.paid_amount) > 0)
-        .map((p: any) => p.payment_month?.toLowerCase())
+        .map((p: any) => p.payment_month?.trim().toLowerCase())
         .filter(Boolean)
     );
     const unpaidMonthsMap = new Map<string, any>(
-      existingPayments
+      survivingPayments
         .filter((p: any) => p.status !== 'Paid' && Number(p.paid_amount || 0) === 0)
-        .map((p: any) => [p.payment_month?.toLowerCase(), p])
+        .map((p: any) => [p.payment_month?.trim().toLowerCase(), p])
     );
 
     // 4. For each completed billing month, sync its record
-    const entriesToInsert = [];
+    const entriesToInsert: any[] = [];
+    const seenInsertMonths = new Set<string>();
 
     for (const billingMonth of completedBillingMonths) {
-      const monthLower = billingMonth.monthName.toLowerCase();
+      const monthLower = billingMonth.monthName.trim().toLowerCase();
 
-      // If it has been paid, do nothing.
+      // If it has been paid, skip
       if (paidMonthsNames.has(monthLower)) {
         continue;
       }
@@ -142,6 +181,11 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
         }
         continue;
       }
+
+      if (seenInsertMonths.has(monthLower)) {
+        continue;
+      }
+      seenInsertMonths.add(monthLower);
 
       // Otherwise, generate a new unpaid record in fee_payments
       const paymentMonthDate = new Date(billingMonth.monthName + ' 1');
@@ -174,8 +218,6 @@ export async function syncStudentFeePayments(supabase: any, studentId: string, c
         console.error('Error inserting synced fee entries:', insertError);
       }
     }
-
-    // Retain all existing fee records safely without deletion
   } catch (err) {
     console.error('Unexpected error in syncStudentFeePayments:', err);
   }
@@ -192,18 +234,17 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       .from('students')
       .select('id, admission_date, monthly_fee, name')
       .eq('is_active', true);
-    // organization_id does not exist in the database
     const { data: students, error: studentsError } = await studentsQuery;
 
     if (studentsError || !students || students.length === 0) {
       return;
     }
 
-    // 2. Fetch all unpaid fee payments for the organization
+    // 2. Fetch all fee payments with high limit (default REST limit is 1000)
     let unpaidQuery = supabase
       .from('fee_payments')
-      .select('*');
-    // organization_id does not exist in the database
+      .select('id, student_id, payment_month, status, paid_amount, amount')
+      .limit(50000);
     const { data: allUnpaid, error: unpaidError } = await unpaidQuery;
 
     if (unpaidError) {
@@ -217,13 +258,15 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
 
     for (const payment of allUnpaid || []) {
       const sId = payment.student_id;
+      if (!sId) continue;
+      const pMonth = payment.payment_month?.trim().toLowerCase();
+      if (!pMonth) continue;
+
       if (payment.status === 'Paid' || Number(payment.paid_amount) > 0) {
         if (!paidByStudent.has(sId)) {
           paidByStudent.set(sId, new Set());
         }
-        if (payment.payment_month) {
-          paidByStudent.get(sId)!.add(payment.payment_month.toLowerCase());
-        }
+        paidByStudent.get(sId)!.add(pMonth);
       } else {
         if (!unpaidByStudent.has(sId)) {
           unpaidByStudent.set(sId, []);
@@ -233,9 +276,9 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
     }
 
     const entriesToInsert: any[] = [];
-    const idsToDelete: string[] = [];
+    const insertedKeys = new Set<string>();
 
-    // 5. For each student, check what needs to be synced
+    // 4. For each student, check what needs to be synced
     for (const student of students) {
       if (!student.admission_date) {
         continue;
@@ -246,18 +289,19 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
 
       // Get completed billing months for this student
       const completedBillingMonths = getCompletedBillingMonths(student.admission_date, currentDate);
-      const completedBillingMonthsNames = completedBillingMonths.map(m => m.monthName.toLowerCase());
-
       const studentPaidMonths = paidByStudent.get(studentId) || new Set<string>();
       const studentUnpaidPayments = unpaidByStudent.get(studentId) || [];
-      const studentUnpaidMap = new Map<string, any>(studentUnpaidPayments.map(p => [p.payment_month.toLowerCase(), p]));
+      const studentUnpaidMap = new Map<string, any>(
+        studentUnpaidPayments.map(p => [p.payment_month?.trim().toLowerCase(), p])
+      );
 
       // Check which completed billing months are missing or need updating
       for (const billingMonth of completedBillingMonths) {
-        const monthLower = billingMonth.monthName.toLowerCase();
+        const monthLower = billingMonth.monthName.trim().toLowerCase();
+        const key = `${studentId}_${monthLower}`;
 
         // If paid, skip
-        if (studentPaidMonths.has(monthLower)) {
+        if (studentPaidMonths.has(monthLower) || insertedKeys.has(key)) {
           continue;
         }
 
@@ -271,6 +315,8 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
           }
           continue;
         }
+
+        insertedKeys.add(key);
 
         // Otherwise, prepare a new unpaid record
         const paymentMonthDate = new Date(billingMonth.monthName + ' 1');
@@ -296,7 +342,7 @@ export async function syncAllStudentFeePayments(supabase: any, organizationId?: 
       }
     }
 
-    // 6. Perform bulk insert for new fee entries (no records are ever deleted)
+    // 5. Perform bulk insert for new fee entries
     if (entriesToInsert.length > 0) {
       const { error: insertError } = await supabase
         .from('fee_payments')

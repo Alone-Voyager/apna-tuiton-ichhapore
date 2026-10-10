@@ -91,17 +91,38 @@ export async function getStudentDetailsWithFees(id: string) {
     console.error('Error fetching paid payments:', paidError);
   }
 
-  // Calculate fee statistics
-  const totalPaid = paidPayments?.reduce(
-    (sum: number, p: { paid_amount: any }) => sum + Number(p.paid_amount || 0),
-    0
-  ) || 0;
+  // Deduplicate payments by month (prioritizing Paid or partial over duplicate unpaid entries)
+  const monthMap = new Map<string, any>();
+  for (const p of (allFeePayments || [])) {
+    const mKey = (p.payment_month || '').trim().toLowerCase();
+    if (!mKey) continue;
+    const existing = monthMap.get(mKey);
+    if (!existing) {
+      monthMap.set(mKey, p);
+    } else {
+      const existingPaid = Number(existing.paid_amount || 0);
+      const currentPaid = Number(p.paid_amount || 0);
+      if (currentPaid > existingPaid || (p.status === 'Paid' && existing.status !== 'Paid')) {
+        monthMap.set(mKey, p);
+      }
+    }
+  }
 
-  const allPayments = allFeePayments || [];
-  const pendingPayments = allPayments.filter((p: any) => ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status));
+  const deduplicatedPayments = Array.from(monthMap.values());
+  const pendingPayments = deduplicatedPayments.filter((p: any) =>
+    ['Unpaid', 'Pending', 'Overdue', 'Partial'].includes(p.status)
+  );
+
+  const totalPaid = deduplicatedPayments
+    .filter((p: any) => p.status === 'Paid' || Number(p.paid_amount || 0) > 0)
+    .reduce((sum: number, p: any) => sum + Number(p.paid_amount || 0), 0);
+
   const totalPendingMonths = pendingPayments.length;
-  const pendingAmount = pendingPayments.reduce((sum: number, p: { amount: any; paid_amount?: any; }) => sum + Number(p.amount || 0) - Number(p.paid_amount || 0), 0);
-  const pendingMonths = pendingPayments.map((p: { payment_month: any; }) => p.payment_month);
+  const pendingAmount = pendingPayments.reduce(
+    (sum: number, p: any) => sum + Math.max(0, Number(p.amount || 0) - Number(p.paid_amount || 0)),
+    0
+  );
+  const pendingMonths = pendingPayments.map((p: any) => p.payment_month);
 
   return {
     data: {
@@ -110,8 +131,8 @@ export async function getStudentDetailsWithFees(id: string) {
       totalPendingMonths,
       pendingAmount,
       pendingMonths,
-      feePayments: allPayments,
-      fee_payments: allPayments, // Provide both camelCase and snake_case for compatibility
+      feePayments: deduplicatedPayments,
+      fee_payments: deduplicatedPayments, // Provide both camelCase and snake_case for compatibility
       paymentHistory: paidPayments || []
     },
     error: null
