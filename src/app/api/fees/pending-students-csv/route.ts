@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { supabaseAdmin } from '../../../../lib/supabase/client';
-import { syncAllStudentFeePayments } from '../../../../lib/fees-service';
+import { syncAllStudentFeePayments, fetchAllRows } from '../../../../lib/fees-service';
 
 export async function GET(request: NextRequest) {
   try {
     const response = NextResponse.json({ success: true });
     const { searchParams } = new URL(request.url);
-    const fromDate = searchParams.get('fromDate') || searchParams.get('from');
-    const toDate = searchParams.get('toDate') || searchParams.get('to');
+    const rawFrom = searchParams.get('fromDate') || searchParams.get('from');
+    const rawTo = searchParams.get('toDate') || searchParams.get('to');
 
     // 1. Validate Date Range
-    if (!fromDate || !toDate) {
+    if (!rawFrom || !rawTo) {
       return NextResponse.json(
         { error: 'Both From Date and To Date are required.' },
         { status: 400 }
       );
     }
+
+    const normalizeDateStr = (str: string) => {
+      const trimmed = str.trim();
+      if (trimmed.includes('/')) {
+        const parts = trimmed.split('/');
+        if (parts.length === 3 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+      return trimmed;
+    };
+
+    const fromDate = normalizeDateStr(rawFrom);
+    const toDate = normalizeDateStr(rawTo);
 
     const startDateObj = new Date(fromDate);
     const endDateObj = new Date(toDate);
@@ -57,27 +71,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      // bypassed organization check
+    let organizationId: string | null = null;
+    try {
+      const { data: userData } = await supabaseAdmin
+        .from('admin_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (userData && 'organization_id' in userData) {
+        organizationId = userData.organization_id;
+      }
+    } catch (e) {
+      // Ignored
     }
-
-    const organizationId = userData.organization_id;
 
     // 3. Sync fee payments up to end date to ensure all due records are generated
     const syncTargetDate = endDateObj > new Date() ? endDateObj : new Date();
-    await syncAllStudentFeePayments(supabaseAdmin, organizationId, syncTargetDate);
+    await syncAllStudentFeePayments(supabaseAdmin, organizationId || undefined, syncTargetDate);
 
-    // 4. Fetch fee payments with student and class info
+    // 4. Fetch fee payments with student and class info using fetchAllRows pagination
     // Exclude suspended, inactive, or deleted students
-    const { data: rawPayments, error: queryError } = await supabaseAdmin
-      .from('fee_payments')
-      .select(`
+    const rawPayments = await fetchAllRows(
+      supabaseAdmin,
+      'fee_payments',
+      `
         id,
         amount,
         paid_amount,
@@ -98,14 +115,9 @@ export async function GET(request: NextRequest) {
           class_id,
           classes(id, name)
         )
-      `)
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
-      .neq('status', 'Paid');
-
-    if (queryError) {
-      console.error('Error fetching pending fee payments:', queryError);
-      return NextResponse.json({ error: queryError.message }, { status: 500 });
-    }
+      `,
+      (q) => q.neq('status', 'Paid')
+    );
 
     // 5. Aggregate Pending Fees & Months strictly by due_date <= toDate for active students
     interface MonthItem {

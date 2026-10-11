@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       // bypassed organization check
     }
 
-    const organizationId = userData.organization_id;
+    const organizationId = userData?.organization_id || null;
 
     let query = supabase
       .from('students')

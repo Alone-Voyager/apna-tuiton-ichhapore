@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { supabaseAdmin } from '../../../../lib/supabase/client';
 
 // POST /api/students/promote - Promote a student to a different class
 export async function POST(request: NextRequest) {
@@ -42,22 +43,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's organization_id from the admin_profiles table
-    const { data: userData, error: userError } = await supabase
-      .from('admin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json(
-        { error: 'User organization not found' },
-        { status: 403 }
-      );
-    }
-
-    const organizationId = userData.organization_id;
-
     // Get request body
     const body = await request.json();
     const { studentId, newClassId, oldClassId } = body;
@@ -69,12 +54,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify student belongs to the organization
-    const { data: student, error: studentError } = await supabase
+    // Verify student exists
+    const { data: student, error: studentError } = await supabaseAdmin
       .from('students')
-      .select('id, class_id, organization_id')
+      .select('id, class_id')
       .eq('id', studentId)
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .single();
 
     if (studentError || !student) {
@@ -84,12 +68,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify new class belongs to the organization
-    const { data: newClass, error: classError } = await supabase
+    // Verify new class exists
+    const { data: newClass, error: classError } = await supabaseAdmin
       .from('classes')
       .select('id, total_students')
       .eq('id', newClassId)
-      // [ORG-FILTER-SKIP] .eq('organization_id', organizationId)
       .single();
 
     if (classError || !newClass) {
@@ -101,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Start the promotion process
     // Step 1: Update student's class_id
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('students')
       .update({ 
         class_id: newClassId,
@@ -119,21 +102,21 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Decrement old class student count (if student had a class)
     if (oldClassId) {
-      const { error: decrementError } = await supabase.rpc('decrement_class_student_count', {
+      const { error: decrementError } = await supabaseAdmin.rpc('decrement_class_student_count', {
         class_id: oldClassId
       });
 
       if (decrementError) {
         console.error('Error decrementing old class count:', decrementError);
         // Try manual decrement as fallback
-        const { data: oldClass } = await supabase
+        const { data: oldClass } = await supabaseAdmin
           .from('classes')
           .select('total_students')
           .eq('id', oldClassId)
           .single();
 
         if (oldClass) {
-          await supabase
+          await supabaseAdmin
             .from('classes')
             .update({ 
               total_students: Math.max(0, (oldClass.total_students || 1) - 1),
@@ -145,14 +128,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: Increment new class student count
-    const { error: incrementError } = await supabase.rpc('increment_class_student_count', {
+    const { error: incrementError } = await supabaseAdmin.rpc('increment_class_student_count', {
       class_id: newClassId
     });
 
     if (incrementError) {
       console.error('Error incrementing new class count:', incrementError);
       // Try manual increment as fallback
-      await supabase
+      await supabaseAdmin
         .from('classes')
         .update({ 
           total_students: (newClass.total_students || 0) + 1,
