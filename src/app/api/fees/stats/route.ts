@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestOrgContext } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
-import { syncAllStudentFeePayments } from '@/lib/fees-service';
+import { syncAllStudentFeePayments, fetchAllRows } from '@/lib/fees-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -69,16 +69,15 @@ export async function GET(request: NextRequest) {
     
     console.log('Updating Unpaid entries to Overdue for months before:', currentMonthStart.toDateString());
     
-    // First, fetch all Unpaid entries to check which ones need updating
-    const { data: unpaidEntries, error: unpaidFetchError } = await supabaseAdmin
-      .from('fee_payments')
-      .select('id, payment_month')
-      // [ORG-FILTER-SKIP] .eq('organization_id', userData.organization_id)
-      .in('status', ['Pending', 'Unpaid']); // Support both in case old records exist
-    
-    if (unpaidFetchError) {
-      console.error('Error fetching unpaid entries:', unpaidFetchError);
-    } else if (unpaidEntries && unpaidEntries.length > 0) {
+    // First, fetch all Unpaid entries using fetchAllRows to bypass PostgREST limit
+    const unpaidEntries = await fetchAllRows(
+      supabaseAdmin,
+      'fee_payments',
+      'id, payment_month',
+      (q) => q.in('status', ['Pending', 'Unpaid'])
+    );
+
+    if (unpaidEntries && unpaidEntries.length > 0) {
       // Filter entries where payment_month has ended (before current month)
       const entriesToUpdate = unpaidEntries.filter((entry: any) => {
         const paymentMonthDate = new Date(entry.payment_month + ' 1');
@@ -86,22 +85,19 @@ export async function GET(request: NextRequest) {
         monthEnd.setHours(23, 59, 59, 999);
         return today > monthEnd;
       });
-      
+
       if (entriesToUpdate.length > 0) {
         console.log(`Found ${entriesToUpdate.length} Unpaid entries to convert to Overdue`);
-        
-        // Bulk update all entries that should be Overdue
         const idsToUpdate = entriesToUpdate.map((e: any) => e.id);
-        const { error: bulkUpdateError } = await supabaseAdmin
-          .from('fee_payments')
-          .update({ status: 'Overdue' })
-          .in('id', idsToUpdate);
-        
-        if (bulkUpdateError) {
-          console.error('Error bulk updating to Overdue:', bulkUpdateError);
-        } else {
-          console.log(`✅ Successfully updated ${idsToUpdate.length} entries to Overdue status`);
+        const batchSize = 100;
+        for (let i = 0; i < idsToUpdate.length; i += batchSize) {
+          const batch = idsToUpdate.slice(i, i + batchSize);
+          await supabaseAdmin
+            .from('fee_payments')
+            .update({ status: 'Overdue' })
+            .in('id', batch);
         }
+        console.log(`✅ Successfully updated ${idsToUpdate.length} entries to Overdue status`);
       } else {
         console.log('No Unpaid entries need to be converted to Overdue');
       }
@@ -141,10 +137,11 @@ export async function GET(request: NextRequest) {
     console.log('Total students:', allStudents?.length, 'Active:', activeStudents.length, 'Suspended:', suspendedStudents.length);
     console.log('Suspended students:', suspendedStudents.map((s: any) => ({ id: s.id, name: s.name, class_id: (s as any).class_id })));
 
-    // Fetch ALL fee payments so students have their complete payment history
-    const { data: feePayments, error: feeError } = await supabaseAdmin
-      .from('fee_payments')
-      .select(`
+    // Fetch ALL fee payments using pagination so students have their complete payment history
+    const feePayments = await fetchAllRows(
+      supabaseAdmin,
+      'fee_payments',
+      `
         *,
         students!inner(
           id,
@@ -161,16 +158,8 @@ export async function GET(request: NextRequest) {
             monthly_fee
           )
         )
-      `)
-      .order('payment_date', { ascending: false });
-
-    if (feeError) {
-      console.error('Error fetching fee payments:', feeError);
-      return NextResponse.json(
-        { error: 'Failed to fetch fee payments' },
-        { status: 500 }
-      );
-    }
+      `
+    );
 
     console.log('Fee payments fetched:', feePayments?.length);
 

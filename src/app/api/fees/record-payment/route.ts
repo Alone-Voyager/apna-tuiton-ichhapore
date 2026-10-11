@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
       .from('fee_payments')
       .select('id, payment_month, amount, due_date, status')
       .eq('student_id', studentId)
-      .in('status', ['Pending', 'Overdue'])
+      .in('status', ['Pending', 'Overdue', 'Unpaid'])
       .order('due_date', { ascending: true });
 
     if (error) {

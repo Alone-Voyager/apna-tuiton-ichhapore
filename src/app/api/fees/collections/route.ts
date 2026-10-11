@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestOrgContext } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { fetchAllRows } from '@/lib/fees-service';
 
 interface FeePaymentHistory {
   id: string;
@@ -48,10 +49,11 @@ export async function GET(request: NextRequest) {
 
     const db = supabaseAdmin;
 
-    // Fetch all paid records directly from fee_payments
-    const { data: allPayments, error } = await db
-      .from('fee_payments')
-      .select(`
+    // Fetch all paid records directly from fee_payments using pagination
+    const allPayments = await fetchAllRows(
+      db,
+      'fee_payments',
+      `
         *,
         students (
           id,
@@ -63,14 +65,9 @@ export async function GET(request: NextRequest) {
             name
           )
         )
-      `)
-      .eq('status', 'Paid')
-      .order('payment_date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching paid collections:', error);
-      return NextResponse.json({ error: 'Failed to fetch collections' }, { status: 500 });
-    }
+      `,
+      (q) => q.eq('status', 'Paid')
+    );
 
     console.log('Fetched collections count:', allPayments?.length || 0);
     if (allPayments && allPayments.length > 0) {

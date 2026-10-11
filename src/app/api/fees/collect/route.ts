@@ -204,13 +204,13 @@ export async function POST(request: NextRequest) {
     // This runs asynchronously and won't block the response
     sendPaymentConfirmation({
       studentId: student_id,
-      organizationId: adminProfile.organization_id,
+      organizationId: adminProfile?.organization_id || 'default-org',
       amount: paidAmount,
       paymentMonth: existingPayment.payment_month,
       paymentDate: payment_date,
       paymentMethod: payment_method,
       receiptNumber: receiptNumber,
-      collectedBy: adminProfile.id,
+      collectedBy: adminProfile?.id || null,
     }).catch((error) => {
       // Log error but don't fail the payment
       console.error('Payment confirmation notification failed:', error);

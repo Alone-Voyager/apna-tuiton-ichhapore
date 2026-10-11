@@ -81,12 +81,14 @@ export async function GET(request: NextRequest) {
       (q) => q.in('status', ['Unpaid', 'Pending', 'Overdue', 'Partial'])
     );
 
-    // Deduplicate by student and month so duplicate rows can never inflate outstanding balance
+    // Deduplicate by active student and month so duplicate rows can never inflate outstanding balance
+    const activeStudentIds = new Set(activeStudents.map((s: any) => s.id));
     const outstandingMap = new Map<string, any>();
     for (const p of rawOutstanding) {
       const sId = p.student_id;
+      if (!sId || !activeStudentIds.has(sId)) continue;
       const m = (p.payment_month || '').trim().toLowerCase();
-      if (!sId || !m) continue;
+      if (!m) continue;
       const key = `${sId}___${m}`;
       if (!outstandingMap.has(key)) {
         outstandingMap.set(key, p);

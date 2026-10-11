@@ -38,12 +38,14 @@ export async function GET(request: NextRequest) {
       'student_id, payment_month, amount, paid_amount, status'
     );
 
-    // Deduplicate by student and month (prioritizing Paid entries)
+    // Deduplicate by student and month (prioritizing Paid entries) for active students
+    const activeStudentIds = new Set(activeStudents.map((s: any) => s.id));
     const paymentMap = new Map<string, any>();
     for (const p of allPaymentsRaw) {
       const sId = p.student_id;
+      if (!sId || !activeStudentIds.has(sId)) continue;
       const m = (p.payment_month || '').trim().toLowerCase();
-      if (!sId || !m) continue;
+      if (!m) continue;
       const key = `${sId}___${m}`;
       const existing = paymentMap.get(key);
       if (!existing) {
